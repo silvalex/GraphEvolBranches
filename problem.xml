@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<problemStructure>
+	<task>
+		<provided>
+			<instance name="inst1926141668"/>
+			<instance name="inst395151449"/>
+			<instance name="inst1557679659"/>
+			<instance name="inst2034284318"/>
+			<instance name="inst1161158739"/>
+			<instance name="inst1525933520"/>
+			<instance name="inst1612775326"/>
+			<instance name="inst1063871562"/>
+			<instance name="inst948560629"/>
+			<instance name="inst1271554078"/>
+			<instance name="inst839803796"/>
+		</provided>
+		<options>
+			<condition>
+				<general concept="con1461416843" />
+				<specific concept="con699300824" />
+			</condition>
+			<if>
+				<options>
+				    <condition>
+						<general concept="con1545953204" />
+						<specific concept="con21721128" />
+				    </condition>
+				    <if>
+						<instance name="inst896485213"/>
+						<instance name="inst1707346842"/>
+						<instance name="inst1074264139"/>
+						<instance name="inst1594084593"/>
+						<instance name="inst765813391"/>
+				    </if>
+				    <else>
+						<options>
+						    <condition>
+								<general concept="con1587592002" />
+								<specific concept="con1518159769" />
+						    </condition>
+						    <if>
+						        <instance name="inst1370692519"/>
+								<instance name="inst783692521"/>
+								<instance name="inst1422921276"/>
+								<instance name="inst1843609950"/>
+								<instance name="inst1894814384"/>
+						    </if>
+						    <else>
+								<instance name="inst1895632572"/>
+								<instance name="inst1858970839"/>
+								<instance name="inst620456296"/>
+								<instance name="inst1101566371"/>
+								<instance name="inst1302488652"/>
+						    </else>
+						</options>
+				    </else>
+				</options>
+			</if>
+			<else>
+				<instance name="inst2104330734"/>
+				<instance name="inst1750001286"/>
+				<instance name="inst478920248"/>
+				<instance name="inst1046461989"/>
+			</else>
+		</options>
+	</task>
+	<solutions />
+</problemStructure>
