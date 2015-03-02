@@ -469,38 +469,22 @@ public class GraphInitializer extends SimpleInitializer {
 	 */
 	private void parseWSCTaskFile(String fileName) {
 		try {
-	    	File fXmlFile = new File(fileName);
+	    	File fXmlFile                    = new File(fileName);
 	    	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-	    	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-	    	Document doc = dBuilder.parse(fXmlFile);
-
-	    	org.w3c.dom.Node provided = doc.getElementsByTagName("provided").item(0);
-	    	NodeList providedList = ((Element) provided).getElementsByTagName("instance");
+	    	DocumentBuilder dBuilder         = dbFactory.newDocumentBuilder();
+	    	Document doc                     = dBuilder.parse(fXmlFile);
 
 	    	// Create tree root
-	    	InputNode root = new InputNode();
-	    	for (int i = 0; i < providedList.getLength(); i++) {
-				org.w3c.dom.Node item = providedList.item(i);
-				Element e = (Element) item;
-				root.inputs.add(e.getAttribute("name"));
-	    	}
-	    	taskTree = root;
-
-	    	org.w3c.dom.Node wanted = doc.getElementsByTagName("options").item(0);
-	    	org.w3c.dom.Node conditionNode = ((Element) wanted).getElementsByTagName("condition").item(0);
-	    	String general = ((Element)((Element) conditionNode).getElementsByTagName("general").item(0)).getAttribute("concept");
-	    	String specific = ((Element)((Element) conditionNode).getElementsByTagName("specific").item(0)).getAttribute("concept");
-	    	ConditionNode cond = new ConditionNode();
-	    	cond.general = general;
-	    	cond.specific = specific;
-
-	    	root.child = cond;
-
-
-	    	org.w3c.dom.Node ifNode = ((Element) wanted).getElementsByTagName("if").item(0);
-	    	org.w3c.dom.Node elseNode = ((Element) wanted).getElementsByTagName("else").item(0);
-
-	    	parseCondition(cond, ifNode, elseNode);
+            InputNode root = new InputNode();
+            taskTree = root;
+            
+            org.w3c.dom.Node provided = getFirstDocNode(doc, "provided");
+	    	addInputs(root, provided, false);
+	    	
+	    	org.w3c.dom.Node options = getFirstDocNode(doc, "options");
+            if (options != null) {
+                recursiveParse(root, options, false, 0);
+            }
 		}
 		catch (ParserConfigurationException e) {
             System.out.println("Task file parsing failed...");
@@ -516,75 +500,83 @@ public class GraphInitializer extends SimpleInitializer {
 		}
 	}
 
-	private void parseCondition(ConditionNode conditionNode, org.w3c.dom.Node ifNode, org.w3c.dom.Node elseNode) {
-		NodeList ifChildren = ifNode.getChildNodes();
-		NodeList ifOptionNodes = ((Element)ifNode).getElementsByTagName("options");
+    private org.w3c.dom.Node getFirstDocNode(org.w3c.dom.Node parent, String tagName) {
+        NodeList nodeList = ((Document) parent).getElementsByTagName(tagName);
+        for (int i = 0, len = nodeList.getLength(); i < len; ++i) {
+            org.w3c.dom.Node node = nodeList.item( i );
+            if (node.getOwnerDocument().equals( parent ))
+                return node;
+        }
+        return null;
+    }
+    
+	private org.w3c.dom.Node getFirstNode(org.w3c.dom.Node parent, String tagName) {
+        NodeList nodeList = ((Element) parent).getElementsByTagName(tagName);
+        for (int i = 0, len = nodeList.getLength(); i < len; ++i) {
+            Element el = ((Element)nodeList.item( i ));
+            if (el.getParentNode().equals( parent ))
+                return el;
+        }
+        return null;
+	}
 
-		// We have another nested condition
-		if (ifOptionNodes.getLength() == 1) {
-			org.w3c.dom.Node wanted = ifOptionNodes.item(0);
-	    	org.w3c.dom.Node condNode = ((Element) wanted).getElementsByTagName("condition").item(0);
-	    	String general = ((Element)((Element) condNode).getElementsByTagName("general").item(0)).getAttribute("concept");
-	    	String specific = ((Element)((Element) condNode).getElementsByTagName("specific").item(0)).getAttribute("concept");
-	    	ConditionNode cond = new ConditionNode();
-	    	cond.general = general;
-	    	cond.specific = specific;
+    private void addInputs(InputNode inputNode, org.w3c.dom.Node parent, boolean isGeneral) {
+        NodeList instanceList = ((Element) parent).getElementsByTagName("instance");
 
-	    	org.w3c.dom.Node childIfNode = ((Element) condNode).getElementsByTagName("if").item(0);
-	    	org.w3c.dom.Node childElseNode = ((Element) condNode).getElementsByTagName("else").item(0);
+        for (int i = 0; i < instanceList.getLength(); i++) {
+            org.w3c.dom.Node item = instanceList.item(i);
+            Element el = (Element) item;
+            if (el.getParentNode().equals( parent ))
+                inputNode.inputs.add(el.getAttribute("name"));
+        }
+    }
+    
+	private void addOutputs(TaskNode taskNode, org.w3c.dom.Node parent, boolean isGeneral) {
+        NodeList instanceList = ((Element) parent).getElementsByTagName("instance");
 
-			conditionNode.specificChild = cond;
-			parseCondition(cond, childIfNode, childElseNode);
-		}
-		// Else, we've reached outputs
-		else {
-			OutputNode out = new OutputNode();
-			for (int i = 0; i < ifChildren.getLength(); i++) {
-				if (ifChildren.item(i).getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
-					String nodeName = ifChildren.item(i).getNodeName();
-					if (nodeName.equals("instance")) {
-						org.w3c.dom.Node value = ifChildren.item(i);
-						Element e = (Element) value;
-						out.outputs.add(e.getAttribute("name"));
-					}
-				}
-			}
-			conditionNode.specificChild = out;
-		}
-
-		NodeList elseChildren = elseNode.getChildNodes();
-		NodeList elseOptionNodes = ((Element)elseNode).getElementsByTagName("options");
-
-		// We have another nested condition
-		if (elseOptionNodes.getLength() == 1) {
-			org.w3c.dom.Node wanted = elseOptionNodes.item(0);
-	    	org.w3c.dom.Node condNode = ((Element) wanted).getElementsByTagName("condition").item(0);
-	    	String general = ((Element)((Element) condNode).getElementsByTagName("general").item(0)).getAttribute("concept");
-	    	String specific = ((Element)((Element) condNode).getElementsByTagName("specific").item(0)).getAttribute("concept");
-	    	ConditionNode cond = new ConditionNode();
-	    	cond.general = general;
-	    	cond.specific = specific;
-
-	    	org.w3c.dom.Node childIfNode = ((Element) condNode).getElementsByTagName("if").item(0);
-	    	org.w3c.dom.Node childElseNode = ((Element) condNode).getElementsByTagName("else").item(0);
-
-			conditionNode.generalChild = cond;
-			parseCondition(cond, childIfNode, childElseNode);
-		}
-		// Else, we've reached outputs
-		else {
-			OutputNode out = new OutputNode();
-			for (int i = 0; i < elseChildren.getLength(); i++) {
-				if (elseChildren.item(i).getNodeType() == org.w3c.dom.Node.ELEMENT_NODE) {
-					if (elseChildren.item(i).getNodeName().equals("instance")) {
-						org.w3c.dom.Node value = elseChildren.item(i);
-						Element e = (Element) value;
-						out.outputs.add(e.getAttribute("name"));
-					}
-				}
-			}
-			conditionNode.generalChild = out;
-		}
+        OutputNode outNode = new OutputNode();
+        for (int i = 0; i < instanceList.getLength(); i++) {
+            org.w3c.dom.Node item = instanceList.item(i);
+            Element el = (Element) item;
+            if (el.getParentNode().equals( parent ))
+                outNode.outputs.add(el.getAttribute("name"));
+        }
+        taskNode.addChild( outNode, isGeneral );
+	}
+	
+	private void recursiveParse(TaskNode taskNode, org.w3c.dom.Node parent, boolean isGeneral, int level) {
+	    org.w3c.dom.Node condNode = getFirstNode(parent, "condition");
+	    ConditionNode cond = null;
+	    if (condNode != null) {
+	        cond = new ConditionNode();
+            taskNode.addChild( cond, isGeneral );
+	        org.w3c.dom.Node genNode = getFirstNode(condNode, "general");
+	        if (genNode != null)
+                cond.general = ((Element)genNode).getAttribute("concept");
+	        org.w3c.dom.Node specNode = getFirstNode(condNode, "specific");
+	        if (specNode != null)
+	            cond.specific = ((Element)specNode).getAttribute("concept");
+	    }
+	    org.w3c.dom.Node ifNode = getFirstNode(parent, "if");
+	    if (ifNode != null) {
+	        org.w3c.dom.Node subOptions = getFirstNode(ifNode, "options");
+	        if (subOptions != null) {
+	            recursiveParse(cond, subOptions, false, level + 1);
+	        }
+	        else {
+	            addOutputs(cond, ifNode, false);
+	        }
+	        org.w3c.dom.Node elseNode = getFirstNode(parent, "else");
+	        if (elseNode != null) {
+	            subOptions = getFirstNode(elseNode, "options");
+	            if (subOptions != null) {
+	                recursiveParse(cond, subOptions, true, level + 1);
+	            }
+	            else {
+	                addOutputs(cond, elseNode, true);
+	            }
+	        }
+	    }
 	}
 
 	/**
@@ -596,10 +588,10 @@ public class GraphInitializer extends SimpleInitializer {
 	private void parseWSCTaxonomyFile(String fileName) {
 		try {
 	    	File fXmlFile = new File(fileName);
-	    	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-	    	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-	    	Document doc = dBuilder.parse(fXmlFile);
-	    	NodeList taxonomyRoots = doc.getChildNodes();
+	    	DocumentBuilderFactory dbFactory     = DocumentBuilderFactory.newInstance();
+	    	DocumentBuilder        dBuilder      = dbFactory.newDocumentBuilder();
+	    	Document               doc           = dBuilder.parse(fXmlFile);
+	    	NodeList               taxonomyRoots = doc.getChildNodes();
 
 	    	processTaxonomyChildren(null, taxonomyRoots);
 		}
