@@ -12,6 +12,9 @@ import java.util.Set;
 import ec.EvolutionState;
 import ec.Individual;
 import ec.Species;
+import ec.graph.taskNodes.ConditionNode;
+import ec.graph.taskNodes.OutputNode;
+import ec.graph.taskNodes.TaskNode;
 import ec.util.Parameter;
 
 public class GraphSpecies extends Species {
@@ -22,22 +25,25 @@ public class GraphSpecies extends Species {
 
 	@Override
 	public Individual newIndividual(EvolutionState state, int thread) {
-		return createNewGraph(null, state);
+		GraphIndividual ind = createNewBranchedGraph(null, state, ((GraphInitializer)state.initializer).taskTree);
+		return ind;
 	}
 
-	public GraphIndividual createNewGraph(GraphIndividual mergedGraph, EvolutionState state) {
+	public GraphIndividual createNewBranchedGraph(GraphIndividual mergedGraph, EvolutionState state, TaskNode taskNode) {
+		// The first goal node is the child of the input node
+		taskNode = taskNode.getChildren().get(0);
+
 		GraphInitializer init = (GraphInitializer) state.initializer;
 		Set<Node> unused = new HashSet<Node>(init.relevant);
 
 		GraphIndividual newGraph = new GraphIndividual(unused);
 		Node start = init.startNode.clone();
-		Node end   = init.endNode.clone();
 
-		Set<String> currentEndInputs = new HashSet<String>();
+		Set<String> currentGoalInputs = new HashSet<String>();
 		Map<String,Edge> connections = new HashMap<String,Edge>();
 
 		// Connect start node
-		connectCandidateToGraphByInputs(start, connections, newGraph, currentEndInputs, init);
+		connectCandidateToGraphByInputs(start, connections, newGraph, init, currentGoalInputs, null, "");
 
 		Set<Node> seenNodes = new HashSet<Node>();
 		Set<Node> relevant = init.relevant;
@@ -46,110 +52,205 @@ public class GraphSpecies extends Species {
 		if (mergedGraph != null)
 			addToCandidateListFromEdges(start, mergedGraph, seenNodes, candidateList);
 		else
-			addToCandidateList(start, seenNodes, relevant, candidateList, init);
+			addToCandidateList(start, seenNodes, relevant, candidateList, init, false, false);
 
 		Collections.shuffle(candidateList, init.random);
 
-		finishConstructingGraph(currentEndInputs, end, candidateList, connections, init, newGraph, mergedGraph, seenNodes, relevant);
+		Set<String> allowedAncestors = new HashSet<String>();
+		allowedAncestors.add(start.getName());
+
+		finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, newGraph, mergedGraph, seenNodes, relevant, allowedAncestors);
 
 		return newGraph;
+
 	}
 
-	public void finishConstructingGraph(Set<String> currentEndInputs, Node end, List<Node> candidateList, Map<String,Edge> connections,
-	        GraphInitializer init, GraphIndividual newGraph, GraphIndividual mergedGraph, Set<Node> seenNodes, Set<Node> relevant) {
-	 // While end cannot be connected to graph
-        while(!currentEndInputs.containsAll(end.getInputs())) {
+	public void finishConstructingBranchedGraph(TaskNode taskNode,
+			List<Node> candidateList, Map<String, Edge> connections,
+			Set<String> currentGoalInputs, GraphInitializer init,
+			GraphIndividual newGraph, GraphIndividual mergedGraph,
+			Set<Node> seenNodes, Set<Node> relevant,
+			Set<String> allowedAncestors) {
 
-            // Select node
-            int index;
+		boolean goalReached = false;
+		Pair<Boolean, Node> goalCheckPair = null;
 
-            candidateLoop:
-            for (index = 0; index < candidateList.size(); index++) {
-                Node candidate = candidateList.get(index).clone();
-                // For all of the candidate inputs, check that there is a service already in the graph
-                // that can satisfy it
-                connections.clear();
+		// while goal node cannot be connected to graph
+		while (!goalReached) {
 
-                for (String input : candidate.getInputs()) {
-                    boolean found = false;
-                    //Collections.shuffle( init.taxonomyMap.get( input ).servicesWithOutput, init.random ); //XXX
-                     for (Node s : init.taxonomyMap.get(input).servicesWithOutput) {
-                         if (newGraph.nodeMap.containsKey(s.getName())) {
-                             Set<String> intersect = new HashSet<String>();
-                             intersect.add(input);
+			// Select node
+			int index;
 
-                             Edge mapEdge = connections.get(s.getName());
-                             if (mapEdge == null) {
-                                 Edge e = new Edge(intersect);
-                                 e.setFromNode(newGraph.nodeMap.get(s.getName()));
-                                 e.setToNode(candidate);
-                                 connections.put(e.getFromNode().getName(), e);
-                             }
-                             else
-                                 mapEdge.getIntersect().addAll(intersect);
+			candidateLoop: for (index = 0; index < candidateList.size(); index++) {
+				Node candidate = candidateList.get(index).clone();
 
-                             found = true;
-                             break;
-                         }
-                     }
-                     // If that input cannot be satisfied, move on to another candidate node to connect
-                     if (!found) {
-                         // Move on to another candidate
-                         continue candidateLoop;
-                     }
-                }
+				// For all of the candidate inputs, check that there is a
+				// service already in the graph
+				// that can satisfy it
+				connections.clear();
 
-                // Connect candidate to graph, adding its reachable services to the candidate list
-                connectCandidateToGraphByInputs(candidate, connections, newGraph, currentEndInputs, init);
-                if (mergedGraph != null)
-                    addToCandidateListFromEdges(candidate, mergedGraph, seenNodes, candidateList);
-                else
-                    addToCandidateList(candidate, seenNodes, relevant, candidateList, init);
+				for (String input : candidate.getInputs()) {
+					boolean found = false;
+					for (Node s : init.taxonomyMap.get(input).servicesWithOutput) {
 
-                break;
-            }
+						String suffix = "";
+						if (!s.getName().equals("start")
+								&& !s.getName().startsWith("cond")
+								&& !s.getName().startsWith("end")) {
 
-            candidateList.remove(index);
-            Collections.shuffle(candidateList, init.random);
-        }
+							suffix = "-" + taskNode.getCorrespondingNode().getName();
+						}
 
-        // Connect end node to graph
-        connections.clear();
-        Iterator<Node> it = newGraph.nodeMap.values().iterator();
-        Node s;
+						if (newGraph.considerableNodeMap.containsKey(s.getName() + suffix)
+								&& allowedAncestors.contains(s.getName()
+										+ suffix)) {
+							Set<String> intersect = new HashSet<String>();
+							intersect.add(input);
 
-        while (!currentEndInputs.isEmpty() && it.hasNext()) {
-            s = it.next();
+							Edge mapEdge = connections
+									.get(s.getName() + suffix);
+							if (mapEdge == null) {
+								Edge e = new Edge(intersect);
+								e.setFromNode(newGraph.nodeMap.get(s.getName()
+										+ suffix));
+								e.setToNode(candidate);
+								connections.put(e.getFromNode().getName()
+										+ suffix, e);
+							} else
+								mapEdge.getIntersect().addAll(intersect);
 
-            Set<String> intersection = new HashSet<String>();
+							found = true;
+							break;
+						}
+					}
 
-            for (String o : s.getOutputs()) {
+					// If that input cannot be satisfied, move on to another
+					// candidate node to connect
+					if (!found) {
+						// Move on to another candidate
+						continue candidateLoop;
+					}
+				}
 
-                Set<String> endNodeInputs = init.taxonomyMap.get(o).endNodeInputs;
-                if (!endNodeInputs.isEmpty()) {
+				// Connect candidate to graph, adding its reachable services to
+				// the candidate list
+				goalCheckPair = connectCandidateToGraphByInputs(candidate,
+						connections, newGraph, init, currentGoalInputs,
+						taskNode, "-"
+								+ taskNode.getCorrespondingNode().getName());
+				goalReached = goalCheckPair.a;
 
-                    for (String i : endNodeInputs) {
-                        if (currentEndInputs.contains(i)) {
-                            intersection.add(i);
-                            currentEndInputs.remove(i);
-                        }
-                    }
+				allowedAncestors.add(candidate.getName());
+				if (mergedGraph != null)
+					addToCandidateListFromEdges(candidate, mergedGraph,
+							seenNodes, candidateList);
+				else
+					addToCandidateList(candidate, seenNodes, relevant,
+							candidateList, init, false, false);
 
-                }
-            }
+				break;
+			}
+			candidateList.remove(index);
+			Collections.shuffle(candidateList, init.random);
+		}
 
-            if (!intersection.isEmpty()) {
-                Edge e = new Edge(intersection);
-                e.setFromNode(s);
-                e.setToNode(end);
-                connections.put(e.getFromNode().getName(), e);
-            }
-        }
-        connectCandidateToGraphByInputs(end, connections, newGraph, currentEndInputs, init);
-        init.removeDanglingNodes(newGraph);
-        if (newGraph.nodeMap.size() == 1) {
-            int ieee = 1;
-        }
+		// Connect end node to graph
+		Node goal = taskNode.getCorrespondingNode().clone();
+		connections.clear();
+
+		if (taskNode instanceof ConditionNode) {
+			// Set probabilities
+			goal.setProbabilities(goalCheckPair.b.getProbabilities());
+
+			// Connect node
+			newGraph.nodeMap.put(goal.getName(), goal);
+			newGraph.considerableNodeMap.put(goal.getName(), goal);
+			Edge e = new Edge(new HashSet<String>());
+			e.setFromNode(goalCheckPair.b);
+			e.setToNode(goal);
+			goalCheckPair.b.getOutgoingEdgeList().add(e);
+			goal.getIncomingEdgeList().add(e);
+			newGraph.edgeList.add(e);
+			newGraph.considerableEdgeList.add(e);
+
+			ConditionNode conditionNode = (ConditionNode) taskNode;
+			allowedAncestors.add(goal.getName());
+			Set<String> ifSeparateAncestors = new HashSet<String>(allowedAncestors);
+			currentGoalInputs.clear();
+			connections.clear();
+			seenNodes.clear();
+
+			// First create the if branch (i.e. specific branch)
+			if (mergedGraph != null)
+				addToCandidateListFromEdges(goal, mergedGraph, seenNodes,
+						candidateList);
+			else
+				addToCandidateList(goal, seenNodes, relevant, candidateList,
+						init, true, true);
+
+			Collections.shuffle(candidateList, init.random);
+			finishConstructingBranchedGraph(conditionNode.specificChild,
+					candidateList, connections, currentGoalInputs, init,
+					newGraph, mergedGraph, seenNodes, relevant,
+					ifSeparateAncestors);
+
+			// Now create the else branch (i.e. general branch)
+			allowedAncestors.add(goal.getName());
+			Set<String> elseSeparateAncestors = new HashSet<String>(allowedAncestors);
+			currentGoalInputs.clear();
+			connections.clear();
+			seenNodes.clear();
+
+			if (mergedGraph != null)
+				addToCandidateListFromEdges(goal, mergedGraph, seenNodes,
+						candidateList);
+			else
+				addToCandidateList(goal, seenNodes, relevant, candidateList,
+						init, true, false);
+
+			Collections.shuffle(candidateList, init.random);
+			finishConstructingBranchedGraph(conditionNode.generalChild,
+					candidateList, connections, currentGoalInputs, init,
+					newGraph, mergedGraph, seenNodes, relevant,
+					elseSeparateAncestors);
+
+		} else {
+			Set<Node> nodeSet = new HashSet<Node>(newGraph.nodeMap.values());
+			for (Node s : nodeSet) {
+				if (!currentGoalInputs.isEmpty()) {
+					if (allowedAncestors.contains(s.getName())) {
+						Set<String> intersection = new HashSet<String>();
+
+						for (String o : s.getOutputPossibilities().get(0)) {
+
+							Set<String> endNodeInputs = init.taxonomyMap.get(o).endNodeInputs
+									.get(goal.getName());
+							if (endNodeInputs != null
+									&& !endNodeInputs.isEmpty()) {
+
+								for (String i : endNodeInputs) {
+									if (currentGoalInputs.contains(i)) {
+										intersection.add(i);
+										currentGoalInputs.remove(i);
+									}
+								}
+
+							}
+						}
+
+						if (!intersection.isEmpty()) {
+							Edge e = new Edge(intersection);
+							e.setFromNode(s);
+							e.setToNode(goal);
+							connections.put(e.getFromNode().getName(), e);
+						}
+					}
+					connectCandidateToGraphByInputs(goal, connections,
+							newGraph, init, currentGoalInputs, null, "");
+				}
+			}
+		}
+		init.removeDanglingNodes(newGraph);
 	}
 
 	private void addToCandidateListFromEdges (Node n, GraphIndividual mergedGraph, Set<Node> seenNode, List<Node> candidateList) {
@@ -167,8 +268,8 @@ public class GraphSpecies extends Species {
 		}
 	}
 
-	public void connectCandidateToGraphByInputs(Node candidate, Map<String,Edge> connections, GraphIndividual graph, Set<String> currentEndInputs, GraphInitializer init) {
-
+	public Pair<Boolean, Node> connectCandidateToGraphByInputs(Node candidate, Map<String,Edge> connections, GraphIndividual graph, GraphInitializer init, Set<String> currentGoalInputs, TaskNode taskNode, String suffix) {
+		candidate.setName(candidate.getName() + suffix);
 		graph.nodeMap.put(candidate.getName(), candidate);
 		graph.considerableNodeMap.put(candidate.getName(), candidate);
 		graph.edgeList.addAll(connections.values());
@@ -179,43 +280,70 @@ public class GraphSpecies extends Species {
 			Node fromNode = graph.nodeMap.get(e.getFromNode().getName());
 			fromNode.getOutgoingEdgeList().add(e);
 		}
-		for (String o : candidate.getOutputs()) {
-			currentEndInputs.addAll(init.taxonomyMap.get(o).endNodeInputs);
-		}
+
+
 		graph.unused.remove(candidate);
+
+		if (taskNode != null) {
+
+			boolean isConditionalTask = taskNode instanceof ConditionNode;
+			// Check if goal reached in case of condition
+			if (isConditionalTask) {
+				if (candidate.getOutputPossibilities().size() > 1) {
+
+					ConditionNode condNode = (ConditionNode) taskNode;
+					Node node = taskNode.getCorrespondingNode();
+					Set<String> generalConds = new HashSet<String>();
+					Set<String> specificConds = new HashSet<String>();
+
+					for (String o : candidate.getOutputPossibilities().get(0)) {
+						TaxonomyNode taxNode = init.taxonomyMap.get(o);
+						Set<String> inputs = taxNode.condNodeGeneralInputs.get(node.getName());
+						if (inputs != null)
+							generalConds.addAll(inputs);
+					}
+
+					for (String o : candidate.getOutputPossibilities().get(1)) {
+						TaxonomyNode taxNode = init.taxonomyMap.get(o);
+						Set<String> inputs = taxNode.condNodeSpecificInputs.get(node.getName());
+						if (inputs != null)
+							specificConds.addAll(inputs);
+					}
+
+					return new Pair<Boolean, Node>(generalConds.contains(node.getGeneralCondition()) && specificConds.contains(node.getSpecificCondition()), candidate);
+				}
+				else
+					return new Pair<Boolean, Node>(false, candidate);
+			}
+			// Check if goal reached in case of output node
+			else {
+				for (String o : candidate.getOutputPossibilities().get(0)) {
+					TaxonomyNode taxNode = init.taxonomyMap.get(o);
+					Set<String> outputs = taxNode.endNodeInputs.get(taskNode.getCorrespondingNode().getName());
+					if (outputs != null)
+						currentGoalInputs.addAll(outputs);
+				}
+				return new Pair<Boolean, Node>(currentGoalInputs.containsAll(taskNode.getCorrespondingNode().getInputs()), null);
+			}
+		}
+		return new Pair<Boolean, Node>(false, null);
 	}
 
-	public void appendCandidateToGraphByInputs(Node candidate, Map<String,Edge> connections, GraphIndividual graph) {
-		graph.nodeMap.put(candidate.getName(), candidate);
-		graph.edgeList.addAll(connections.values());
-		candidate.getIncomingEdgeList().addAll(connections.values());
-
-		for (Edge e : connections.values()) {
-			Node fromNode = graph.nodeMap.get(e.getFromNode().getName());
-			fromNode.getOutgoingEdgeList().add(e);
-		}
-		graph.unused.remove(candidate);
-	}
-
-	public void appendCandidateToGraphByOutputs(Node candidate, Map<String,Edge> connections, GraphIndividual graph) {
-		graph.nodeMap.put(candidate.getName(), candidate);
-		graph.edgeList.addAll(connections.values());
-		candidate.getOutgoingEdgeList().addAll(connections.values());
-
-		for (Edge e : connections.values()) {
-			Node toNode = graph.nodeMap.get(e.getToNode().getName());
-			toNode.getIncomingEdgeList().add(e);
-		}
-		graph.unused.remove(candidate);
-	}
-
-	public void addToCandidateList(Node n, Set<Node> seenNode, Set<Node> relevant, List<Node> candidateList, GraphInitializer init) {
+	public void addToCandidateList(Node n, Set<Node> seenNode, Set<Node> relevant, List<Node> candidateList, GraphInitializer init, boolean isCond, boolean isIfBranch) {
 		seenNode.add(n);
 		List<TaxonomyNode> taxonomyOutputs;
 		if (n.getName().equals("start"))
 			taxonomyOutputs = init.startNode.getTaxonomyOutputs();
+		else if (isCond) {
+			candidateList.clear();
+			if (isIfBranch) {
+				taxonomyOutputs = n.getSpecificTaxonomyOutputs();
+			}
+			else
+				taxonomyOutputs = n.getGeneralTaxonomyOutputs();
+		}
 		else
-			taxonomyOutputs = init.serviceMap.get(n.getName()).getTaxonomyOutputs();
+			taxonomyOutputs = init.serviceMap.get(n.getBaseName()).getTaxonomyOutputs();
 
 		for (TaxonomyNode t : taxonomyOutputs) {
 			// Add servicesWithInput from taxonomy node as potential candidates to be connected
@@ -227,76 +355,4 @@ public class GraphSpecies extends Species {
 			}
 		}
 	}
-
-	//==========================================================================================================================
-	//                                                 Debugging Routines
-	//==========================================================================================================================
-
-    public void structureValidator( GraphIndividual graph ) {
-        for ( Edge e : graph.edgeList ) {
-            //Node fromNode = e.getFromNode();
-            Node fromNode = graph.nodeMap.get( e.getFromNode().getName());
-
-            boolean isContained = false;
-            for ( Edge outEdge : fromNode.getOutgoingEdgeList() ) {
-                if ( e == outEdge ) {
-                    isContained = true;
-                    break;
-                }
-            }
-
-            if ( !isContained ) {
-                System.out.println( "Outgoing edge for node " + fromNode.getName() + " not detected." );
-            }
-
-            //Node toNode = e.getToNode();
-            Node toNode = graph.nodeMap.get( e.getToNode().getName());
-
-            isContained = false;
-            for ( Edge inEdge : toNode.getIncomingEdgeList() ) {
-                if ( e == inEdge ) {
-                    isContained = true;
-                    break;
-                }
-            }
-
-            if ( !isContained ) {
-                System.out.println( "Incoming edge for node " + toNode.getName() + " not detected." );
-            }
-        }
-        System.out.println("************************************");
-    }
-
-    public void structureValidator2( GraphIndividual graph ) {
-        for ( Edge e : graph.considerableEdgeList ) {
-            Node fromNode = graph.considerableNodeMap.get( e.getFromNode().getName());
-
-            boolean isContained = false;
-            for ( Edge outEdge : fromNode.getOutgoingEdgeList() ) {
-                if ( e == outEdge ) {
-                    isContained = true;
-                    break;
-                }
-            }
-
-            if ( !isContained ) {
-                System.out.println( "Considerable: Outgoing edge for node " + fromNode.getName() + " not detected." );
-            }
-
-            Node toNode = graph.considerableNodeMap.get( e.getToNode().getName());
-
-            isContained = false;
-            for ( Edge inEdge : toNode.getIncomingEdgeList() ) {
-                if ( e == inEdge ) {
-                    isContained = true;
-                    break;
-                }
-            }
-
-            if ( !isContained ) {
-                System.out.println( "Considerable: Incoming edge for node " + toNode.getName() + " not detected." );
-            }
-        }
-        System.out.println("-----------------------------------------------");
-    }
 }

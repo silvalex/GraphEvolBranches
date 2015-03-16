@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services>
+  <service name="serv001" Res="0.0" Ava="1.0" Suc="1.0" Rel="1.0" Lat="0.0" Pri="0.0">
+      <inputs>
+        <instance name="inst1926141668"/>
+		<instance name="inst395151449"/>
+		<instance name="inst1557679659"/>
+		<instance name="inst2034284318"/>
+		<instance name="inst1161158739"/>
+		<instance name="inst1525933520"/>
+		<instance name="inst1612775326"/>
+		<instance name="inst1063871562"/>
+		<instance name="inst948560629"/>
+		<instance name="inst1271554078"/>
+		<instance name="inst839803796"/>
+      </inputs>
+      <outputs-possibilities>
+          <outputs prob="0.6">
+              <instance name="inst6617000"/>
+          </outputs>
+          <outputs prob="0.4">
+              <instance name="inst629868591"/>
+          </outputs>
+      </outputs-possibilities>
+  </service>
+  <service name="serv002" Res="0.0" Ava="1.0" Suc="1.0" Rel="1.0" Lat="0.0" Pri="0.0">
+      <inputs>
+		<instance name="inst629868591"/>
+      </inputs>
+      <outputs-possibilities>
+          <outputs prob="0.6">
+			<instance name="inst783837147"/>
+          </outputs>
+          <outputs prob="0.4">
+			<instance name="inst714404914"/>
+          </outputs>
+      </outputs-possibilities>
+  </service>
+  <service name="serv003" Res="0.0" Ava="1.0" Suc="1.0" Rel="1.0" Lat="0.0" Pri="0.0">
+      <inputs>
+		<instance name="inst6617000"/>
+      </inputs>
+      <outputs-possibilities>
+          <outputs prob="1.0">
+			<instance name="inst2104330734"/>
+			<instance name="inst1750001286"/>
+			<instance name="inst478920248"/>
+			<instance name="inst1046461989"/>
+          </outputs>
+      </outputs-possibilities>
+  </service>
+  <service name="serv004" Res="0.0" Ava="1.0" Suc="1.0" Rel="1.0" Lat="0.0" Pri="0.0">
+      <inputs>
+		<instance name="inst714404914"/>
+      </inputs>
+      <outputs-possibilities>
+          <outputs prob="1.0">
+			<instance name="inst896485213"/>
+			<instance name="inst1707346842"/>
+			<instance name="inst1074264139"/>
+			<instance name="inst1594084593"/>
+			<instance name="inst765813391"/>
+          </outputs>
+      </outputs-possibilities>
+  </service>
+  <service name="serv005" Res="0.0" Ava="1.0" Suc="1.0" Rel="1.0" Lat="0.0" Pri="0.0">
+      <inputs>
+		<instance name="inst783837147"/>
+      </inputs>
+      <outputs-possibilities>
+          <outputs prob="0.6">
+			<instance name="inst825475945"/>
+          </outputs>
+          <outputs prob="0.4">
+			<instance name="inst63359926"/>
+          </outputs>
+      </outputs-possibilities>
+  </service>
+  <service name="serv006" Res="0.0" Ava="1.0" Suc="1.0" Rel="1.0" Lat="0.0" Pri="0.0">
+      <inputs>
+		<instance name="inst63359926"/>
+      </inputs>
+      <outputs-possibilities>
+          <outputs prob="1.0">
+			<instance name="inst1370692519"/>
+			<instance name="inst783692521"/>
+			<instance name="inst1422921276"/>
+			<instance name="inst1843609950"/>
+			<instance name="inst1894814384"/>
+          </outputs>
+      </outputs-possibilities>
+  </service>
+  <service name="serv007" Res="0.0" Ava="1.0" Suc="1.0" Rel="1.0" Lat="0.0" Pri="0.0">
+      <inputs>
+		<instance name="inst825475945"/>
+      </inputs>
+      <outputs-possibilities>
+          <outputs prob="1.0">
+			<instance name="inst1895632572"/>
+			<instance name="inst1858970839"/>
+			<instance name="inst620456296"/>
+			<instance name="inst1101566371"/>
+			<instance name="inst1302488652"/>
+          </outputs>
+      </outputs-possibilities>
+  </service>
+  <service name="serv011" Res="1437.49" Ava="0.96" Suc="0.44" Rel="0.78" Lat="2043.66" Pri="3.76">
+      <inputs>
+		<instance name="inst1820661885"/>
+		<instance name="inst1897058358"/>
+		<instance name="inst1667460853"/>
+		<instance name="inst371187776"/>
+		<instance name="inst231913132"/>
+		<instance name="inst977029756"/>
+      </inputs>
+      <outputs-possibilities>
+          <outputs prob="1.0">
+			<instance name="inst43636117"/>
+			<instance name="inst881738507"/>
+			<instance name="inst1855428275"/>
+			<instance name="inst63298417"/>
+			<instance name="inst1006470412"/>
+			<instance name="inst376664759"/>
+			<instance name="inst160585594"/>
+			<instance name="inst1781080486"/>
+          </outputs>
+      </outputs-possibilities>
+  </service>
+  <service name="serv012" Res="2765.63" Ava="0.73" Suc="0.93" Rel="0.86" Lat="3974.89" Pri="7.99">
+      <inputs>
+		<instance name="inst226330599"/>
+		<instance name="inst1871403385"/>
+		<instance name="inst1395208904"/>
+      </inputs>
+      <outputs-possibilities>
+          <outputs prob="1.0">
+		    <instance name="inst310981225"/>
+			<instance name="inst1196190643"/>
+			<instance name="inst426906341"/>
+			<instance name="inst1260707320"/>
+			<instance name="inst1300031920"/>
+			<instance name="inst503916997"/>
+          </outputs>
+      </outputs-possibilities>
+  </service>
+</services>

@@ -42,7 +42,10 @@ public class GraphInitializer extends SimpleInitializer {
 	public Map<String, TaxonomyNode> taxonomyMap = new HashMap<String, TaxonomyNode>();
 	public TaskNode taskTree;
 	public Node startNode;
-	public Node endNode;
+	public List<Node> endNodes = new ArrayList<Node>();
+	public List<Node> condNodes = new ArrayList<Node>();
+	public List<String> suffixList = new ArrayList<String>();
+	public List<Node> conditionNodes;
 	public GraphRandom random;
 
 	public final double minAvailability = 0.0;
@@ -108,14 +111,60 @@ public class GraphInitializer extends SimpleInitializer {
 		mockQos[AVAILABILITY] = 1;
 		mockQos[RELIABILITY] = 1;
 		Set<String> startOutput = new HashSet<String>();
-//		startOutput.addAll(taskInput); XXX
-//		startNode = new Node("start", mockQos, new HashSet<String>(), taskInput);
-//		endNode = new Node("end", mockQos, taskOutput ,new HashSet<String>());
-//
-//		populateTaxonomyTree();
-//		relevant = getRelevantServices(serviceMap, taskInput, taskOutput);
-//		if(!runningOwls)
-//		    calculateNormalisationBounds(relevant);
+		startOutput.addAll(((InputNode)taskTree).inputs);
+
+		List<List<String>> outString = new ArrayList<List<String>>();
+		outString.add(new ArrayList<String>(((InputNode)taskTree).inputs));
+		List<Float> probabilities = new ArrayList<Float>();
+		probabilities.add(1.0f);
+
+		Set<OutputNode> outputs = new HashSet<OutputNode>();
+		Set<ConditionNode> conditions = new HashSet<ConditionNode>();
+		taskTree.getAllOutputNodes(outputs);
+		taskTree.getAllConditionNodes(conditions);
+		Set<String> outputStrings = new HashSet<String>();
+
+		startNode = new Node("start", mockQos, new HashSet<String>(), outString, probabilities);
+		startNode.setTaskNode(taskTree);
+		taskTree.setCorrespondingNode(startNode);
+
+		int i = 1;
+		for (OutputNode o : outputs) {
+			outputStrings.addAll(o.outputs);
+			Node endNode = new Node("end" + i, mockQos, o.outputs, null, probabilities);
+			suffixList.add(endNode.getName());
+			endNode.setTaskNode(o);
+			endNodes.add(endNode);
+			o.setCorrespondingNode(endNode);
+			i++;
+		}
+
+		int j = 1;
+		for (ConditionNode c : conditions) {
+			List<String> outsGeneral = new ArrayList<String>();
+			List<String> outsSpecific = new ArrayList<String>();
+			outsGeneral.add(c.general);
+			outsGeneral.addAll(startNode.getOutputPossibilities().get(0));
+			outsSpecific.add(c.specific);
+			outsSpecific.addAll(startNode.getOutputPossibilities().get(0));
+
+			List<List<String>> outputPossibilities = new ArrayList<List<String>>();
+			outputPossibilities.add(outsGeneral);
+			outputPossibilities.add(outsSpecific);
+			Node condNode = new Node("cond" + j, mockQos, c.general, c.specific, outputPossibilities);
+			suffixList.add(condNode.getName());
+			condNode.setTaskNode(c);
+			condNodes.add(condNode);
+			c.setCorrespondingNode(condNode);
+			j++;
+		}
+
+		populateTaxonomyTree();
+		Set<String> inputStrings = new HashSet<String>();
+		inputStrings.addAll(((InputNode)taskTree).inputs);
+
+		relevant = getRelevantServices(serviceMap, inputStrings, outputStrings);
+		calculateNormalisationBounds(relevant);
 	}
 
 	/**
@@ -156,39 +205,39 @@ public class GraphInitializer extends SimpleInitializer {
 			addServiceToTaxonomyTree(s);
 		}
 
-		// Add input and output nodes
+		// Add input, output and condition nodes
 		addServiceToTaxonomyTree(startNode);
-		addEndNodeToTaxonomyTree();
+		addEndNodesToTaxonomyTree();
+		addConditionNodesToTaxonomyTree();
 	}
 
 	private void addServiceToTaxonomyTree(Node s) {
 		// Populate outputs
 	    Set<TaxonomyNode> seenConceptsOutput = new HashSet<TaxonomyNode>();
-//		for (String outputVal : s.getOutputs()) { XXX
-//			TaxonomyNode n = taxonomyMap.get(outputVal);
-////			n.servicesWithOutput.add(s);
-//			s.getTaxonomyOutputs().add(n);
-//
-//			// Also add output to all parent nodes
-//			Queue<TaxonomyNode> queue = new LinkedList<TaxonomyNode>();
-////			for (TaxonomyNode parent : n.parents) {
-////			    if (!seenConceptsOutput.contains( parent ))
-////			        queue.add( parent );
-////			}
-//			queue.add( n );
-//
-//			while (!queue.isEmpty()) {
-//			    TaxonomyNode current = queue.poll();
-//		        seenConceptsOutput.add( current );
-//		        current.servicesWithOutput.add(s);
-//		        for (TaxonomyNode parent : current.parents) {
-//		            if (!seenConceptsOutput.contains( parent )) {
-//		                queue.add(parent);
-//		                seenConceptsOutput.add(parent);
-//		            }
-//		        }
-//			}
-//		}
+
+	    // The general output possibilities come first by convention
+		for (String outputVal : s.getOutputPossibilities().get(0)) {
+			TaxonomyNode n = taxonomyMap.get(outputVal);
+//			n.servicesWithOutput.add(s);
+			s.getTaxonomyOutputs().add(n);
+
+			// Also add output to all parent nodes
+			Queue<TaxonomyNode> queue = new LinkedList<TaxonomyNode>();
+			queue.add( n );
+
+			while (!queue.isEmpty()) {
+			    TaxonomyNode current = queue.poll();
+		        seenConceptsOutput.add( current );
+		        current.servicesWithOutput.add(s);
+		        for (TaxonomyNode parent : current.parents) {
+		            if (!seenConceptsOutput.contains( parent )) {
+		                queue.add(parent);
+		                seenConceptsOutput.add(parent);
+		            }
+		        }
+			}
+		}
+
 		// Populate inputs
 		Set<TaxonomyNode> seenConceptsInput = new HashSet<TaxonomyNode>();
 		for (String inputVal : s.getInputs()) {
@@ -197,10 +246,6 @@ public class GraphInitializer extends SimpleInitializer {
 
 			// Also add input to all children nodes
 			Queue<TaxonomyNode> queue = new LinkedList<TaxonomyNode>();
-//			for (TaxonomyNode child: n.children) {
-//			    if (!seenConceptsInput.contains( child ))
-//			        queue.add(child);
-//			}
 			queue.add( n );
 
 			while(!queue.isEmpty()) {
@@ -218,22 +263,101 @@ public class GraphInitializer extends SimpleInitializer {
 		return;
 	}
 
-	private void addEndNodeToTaxonomyTree() {
-		for (String inputVal : endNode.getInputs()) {
-			TaxonomyNode n = taxonomyMap.get(inputVal);
-			n.endNodeInputs.add(inputVal);
+	private void addEndNodesToTaxonomyTree() {
+		for (Node endNode : endNodes) {
+			for (String inputVal : endNode.getInputs()) {
+				TaxonomyNode n = taxonomyMap.get(inputVal);
+				Set<String> inputs = n.endNodeInputs.get(endNode.getName());
+				if (inputs == null) {
+					inputs = new HashSet<String>();
+					n.endNodeInputs.put(endNode.getName(), inputs);
+				}
+				inputs.add(inputVal);
+
+				// Also add input to all children nodes
+				Queue<TaxonomyNode> queue = new LinkedList<TaxonomyNode>();
+				queue.addAll(n.children);
+
+				while(!queue.isEmpty()) {
+					TaxonomyNode current = queue.poll();
+					Set<String> ins = current.endNodeInputs.get(endNode.getName());
+					if (ins == null) {
+						ins = new HashSet<String>();
+						current.endNodeInputs.put(endNode.getName(), ins);
+					}
+					ins.add(inputVal);
+					queue.addAll(current.children);
+				}
+			}
+		}
+	}
+
+	private void addConditionNodesToTaxonomyTree() {
+
+
+		for (Node condNode : condNodes) {
+			// General value
+			TaxonomyNode n = taxonomyMap.get(condNode.getGeneralCondition());
+			condNode.getGeneralTaxonomyOutputs().add(n);
+			Set<String> inputs = n.condNodeGeneralInputs.get(condNode.getName());
+			if (inputs == null) {
+				inputs = new HashSet<String>();
+				n.condNodeGeneralInputs.put(condNode.getName(), inputs);
+			}
+			inputs.add(condNode.getGeneralCondition());
 
 			// Also add input to all children nodes
 			Queue<TaxonomyNode> queue = new LinkedList<TaxonomyNode>();
 			queue.addAll(n.children);
 
-			while(!queue.isEmpty()) {
+			while (!queue.isEmpty()) {
 				TaxonomyNode current = queue.poll();
-				current.endNodeInputs.add(inputVal);
+				Set<String> ins = current.condNodeGeneralInputs.get(condNode.getName());
+				if (ins == null) {
+					ins = new HashSet<String>();
+					current.condNodeGeneralInputs.put(condNode.getName(), ins);
+				}
+				ins.add(condNode.getGeneralCondition());
 				queue.addAll(current.children);
 			}
-		}
 
+			// Specific value
+			n = taxonomyMap.get(condNode.getSpecificCondition());
+			condNode.getSpecificTaxonomyOutputs().add(n);
+			inputs = n.condNodeSpecificInputs.get(condNode.getName());
+			if (inputs == null) {
+				inputs = new HashSet<String>();
+				n.condNodeSpecificInputs.put(condNode.getName(), inputs);
+			}
+			inputs.add(condNode.getSpecificCondition());
+
+			// Also add input to all children nodes
+			queue = new LinkedList<TaxonomyNode>();
+			queue.addAll(n.children);
+
+			while (!queue.isEmpty()) {
+				TaxonomyNode current = queue.poll();
+				Set<String> ins = current.condNodeSpecificInputs.get(condNode.getName());
+				if (ins == null) {
+					ins = new HashSet<String>();
+					current.condNodeSpecificInputs.put(condNode.getName(), ins);
+				}
+				ins.add(condNode.getSpecificCondition());
+				queue.addAll(current.children);
+			}
+
+			queue = new LinkedList<TaxonomyNode>();
+			queue.add( n );
+
+			// Add cond. node to list of service outputs
+			while (!queue.isEmpty()) {
+			    TaxonomyNode current = queue.poll();
+		        current.servicesWithOutput.add(condNode);
+		        for (TaxonomyNode parent : current.parents) {
+	                queue.add(parent);
+		        }
+			}
+		}
 	}
 
 	/**
@@ -241,40 +365,63 @@ public class GraphInitializer extends SimpleInitializer {
 	 * ontological parent.
 	 */
 	private void findConceptsForInstances() {
-//		Set<String> temp = new HashSet<String>(); XXX
-//
-//		for (String s : taskInput)
-//			temp.add(taxonomyMap.get(s).parents.get(0).value);
-//		taskInput.clear();
-//		taskInput.addAll(temp);
-//
-//		temp.clear();
-//		for (String s : taskOutput)
-//				temp.add(taxonomyMap.get(s).parents.get(0).value);
-//		taskOutput.clear();
-//		taskOutput.addAll(temp);
-//
-//		for (Node s : serviceMap.values()) {
-//			temp.clear();
-//			Set<String> inputs = s.getInputs();
-//			for (String i : inputs)
-//				temp.add(taxonomyMap.get(i).parents.get(0).value);
-//			inputs.clear();
-//			inputs.addAll(temp);
-//
-//			temp.clear();
-//			Set<String> outputs = s.getOutputs();
-//			for (String o : outputs)
-//				temp.add(taxonomyMap.get(o).parents.get(0).value);
-//			outputs.clear();
-//			outputs.addAll(temp);
-//		}
+		Set<String> temp = new HashSet<String>();
+
+		// Go through root (task input) values
+		Set<String> taskInputs = ((InputNode)taskTree).inputs;
+		for (String s : taskInputs)
+			temp.add(taxonomyMap.get(s).parents.get(0).value);
+		taskInputs.clear();
+		taskInputs.addAll(temp);
+		temp.clear();
+
+		// Find all output nodes, and go through their values
+
+		recFindConceptsForInstances(taskTree, temp);
+
+		for (Node s : serviceMap.values()) {
+			temp.clear();
+			Set<String> inputs = s.getInputs();
+			for (String i : inputs)
+				temp.add(taxonomyMap.get(i).parents.get(0).value);
+			inputs.clear();
+			inputs.addAll(temp);
+
+
+			for (List<String> outList : s.getOutputPossibilities()) {
+				temp.clear();
+				for (String o : outList)
+					temp.add(taxonomyMap.get(o).parents.get(0).value);
+				outList.clear();
+				outList.addAll(temp);
+			}
+		}
+	}
+
+	private void recFindConceptsForInstances(TaskNode node, Set<String> temp) {
+		// It is an output node
+		List<TaskNode> children = node.getChildren();
+
+		if (children == null) {
+			Set<String> taskOutputs = ((OutputNode)node).outputs;
+			for (String s : taskOutputs) {
+				temp.add(taxonomyMap.get(s).parents.get(0).value);
+			}
+			taskOutputs.clear();
+			taskOutputs.addAll(temp);
+			temp.clear();
+		}
+		else {
+			for (TaskNode n : children) {
+				recFindConceptsForInstances(n, temp);
+			}
+		}
 	}
 
 	public void removeDanglingNodes(GraphIndividual graph) {
 	    List<Node> dangling = new ArrayList<Node>();
 	    for (Node g : graph.nodeMap.values()) {
-	        if (!g.getName().equals("end") && g.getOutgoingEdgeList().isEmpty())
+	        if (!g.getName().startsWith("end") && g.getOutgoingEdgeList().isEmpty())
 	            dangling.add( g );
 	    }
 
@@ -314,7 +461,9 @@ public class GraphInitializer extends SimpleInitializer {
 			sSet.addAll(sFound);
 			services.removeAll(sFound);
 			for (Node s: sFound) {
-//				cSearch.addAll(s.getOutputs()); XXX
+				for (List<String> outPoss : s.getOutputPossibilities()) {
+					cSearch.addAll(outPoss);
+				}
 			}
 			sFound.clear();
 			sFound = discoverService(services, cSearch);
@@ -425,7 +574,7 @@ public class GraphInitializer extends SimpleInitializer {
 					inputs.add(e.getAttribute("name"));
 				}
 
-				// Get outputs
+				// Get outputs -- the general possibility comes first by convention
 				org.w3c.dom.Node outputNode = eElement.getElementsByTagName("outputs-possibilities").item(0);
 				NodeList possList = ((Element)outputNode).getElementsByTagName("outputs");
 				for (int j = 0; j < possList.getLength(); j++) {
@@ -477,10 +626,10 @@ public class GraphInitializer extends SimpleInitializer {
 	    	// Create tree root
             InputNode root = new InputNode();
             taskTree = root;
-            
+
             org.w3c.dom.Node provided = getFirstDocNode(doc, "provided");
 	    	addInputs(root, provided, false);
-	    	
+
 	    	org.w3c.dom.Node options = getFirstDocNode(doc, "options");
             if (options != null) {
                 recursiveParse(root, options, false, 0);
@@ -509,7 +658,7 @@ public class GraphInitializer extends SimpleInitializer {
         }
         return null;
     }
-    
+
 	private org.w3c.dom.Node getFirstNode(org.w3c.dom.Node parent, String tagName) {
         NodeList nodeList = ((Element) parent).getElementsByTagName(tagName);
         for (int i = 0, len = nodeList.getLength(); i < len; ++i) {
@@ -530,7 +679,7 @@ public class GraphInitializer extends SimpleInitializer {
                 inputNode.inputs.add(el.getAttribute("name"));
         }
     }
-    
+
 	private void addOutputs(TaskNode taskNode, org.w3c.dom.Node parent, boolean isGeneral) {
         NodeList instanceList = ((Element) parent).getElementsByTagName("instance");
 
@@ -542,14 +691,16 @@ public class GraphInitializer extends SimpleInitializer {
                 outNode.outputs.add(el.getAttribute("name"));
         }
         taskNode.addChild( outNode, isGeneral );
+        outNode.parent = taskNode;
 	}
-	
+
 	private void recursiveParse(TaskNode taskNode, org.w3c.dom.Node parent, boolean isGeneral, int level) {
 	    org.w3c.dom.Node condNode = getFirstNode(parent, "condition");
 	    ConditionNode cond = null;
 	    if (condNode != null) {
 	        cond = new ConditionNode();
             taskNode.addChild( cond, isGeneral );
+            cond.parent = taskNode;
 	        org.w3c.dom.Node genNode = getFirstNode(condNode, "general");
 	        if (genNode != null)
                 cond.general = ((Element)genNode).getAttribute("concept");

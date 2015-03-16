@@ -1,8 +1,10 @@
 package ec.graph;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -12,7 +14,9 @@ import java.util.Set;
  * @author sawczualex
  */
 public class TaxonomyNode {
-	public Set<String> endNodeInputs = new HashSet<String>();
+	public Map<String, Set<String>> endNodeInputs = new HashMap<String, Set<String>>();
+	public Map<String, Set<String>> condNodeGeneralInputs = new HashMap<String, Set<String>>();
+	public Map<String, Set<String>> condNodeSpecificInputs = new HashMap<String, Set<String>>();
 	public List<Node> servicesWithOutput = new ArrayList<Node>();
 	public List<Node> servicesWithInput = new ArrayList<Node>();
 	public String value;
@@ -43,7 +47,7 @@ public class TaxonomyNode {
             }
         }
     }
-    
+
     @Override
     public boolean equals(Object other) {
         if (other instanceof TaxonomyNode) {
@@ -51,12 +55,12 @@ public class TaxonomyNode {
         }
         return false;
     }
-    
+
     @Override
     public int hashCode() {
         return value.hashCode();
     }
-    
+
     @Override
     public String toString() {
         return value;
