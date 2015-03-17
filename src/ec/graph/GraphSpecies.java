@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -13,7 +12,6 @@ import ec.EvolutionState;
 import ec.Individual;
 import ec.Species;
 import ec.graph.taskNodes.ConditionNode;
-import ec.graph.taskNodes.OutputNode;
 import ec.graph.taskNodes.TaskNode;
 import ec.util.Parameter;
 
@@ -59,7 +57,7 @@ public class GraphSpecies extends Species {
 		Set<String> allowedAncestors = new HashSet<String>();
 		allowedAncestors.add(start.getName());
 
-		finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, newGraph, mergedGraph, seenNodes, relevant, allowedAncestors);
+		finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, newGraph, mergedGraph, seenNodes, relevant, allowedAncestors, true);
 
 		return newGraph;
 
@@ -70,12 +68,11 @@ public class GraphSpecies extends Species {
 			Set<String> currentGoalInputs, GraphInitializer init,
 			GraphIndividual newGraph, GraphIndividual mergedGraph,
 			Set<Node> seenNodes, Set<Node> relevant,
-			Set<String> allowedAncestors) {
+			Set<String> allowedAncestors, boolean removeDangling) {
 
 		boolean goalReached = false;
 		Pair<Boolean, Node> goalCheckPair = null;
 
-		// while goal node cannot be connected to graph
 		while (!goalReached) {
 
 			// Select node
@@ -93,29 +90,27 @@ public class GraphSpecies extends Species {
 					boolean found = false;
 					for (Node s : init.taxonomyMap.get(input).servicesWithOutput) {
 
-						String suffix = "";
+						String ancestor = s.getBaseName();
 						if (!s.getName().equals("start")
 								&& !s.getName().startsWith("cond")
 								&& !s.getName().startsWith("end")) {
-
-							suffix = "-" + taskNode.getCorrespondingNode().getName();
+						    for (String a : allowedAncestors) {
+						        if (a.startsWith( s.getBaseName() )) {
+						            ancestor = a;
+						            break;
+						        }
+						    }
 						}
-
-						if (newGraph.considerableNodeMap.containsKey(s.getName() + suffix)
-								&& allowedAncestors.contains(s.getName()
-										+ suffix)) {
+						if (newGraph.considerableNodeMap.containsKey(ancestor) && allowedAncestors.contains( ancestor )) {
 							Set<String> intersect = new HashSet<String>();
 							intersect.add(input);
 
-							Edge mapEdge = connections
-									.get(s.getName() + suffix);
+                          Edge mapEdge = connections.get(ancestor);
 							if (mapEdge == null) {
 								Edge e = new Edge(intersect);
-								e.setFromNode(newGraph.nodeMap.get(s.getName()
-										+ suffix));
+								e.setFromNode(newGraph.nodeMap.get(ancestor));
 								e.setToNode(candidate);
-								connections.put(e.getFromNode().getName()
-										+ suffix, e);
+                              connections.put(ancestor, e);
 							} else
 								mapEdge.getIntersect().addAll(intersect);
 
@@ -176,6 +171,7 @@ public class GraphSpecies extends Species {
 			ConditionNode conditionNode = (ConditionNode) taskNode;
 			allowedAncestors.add(goal.getName());
 			Set<String> ifSeparateAncestors = new HashSet<String>(allowedAncestors);
+			List<Node> ifCandidateList = new ArrayList<Node>(candidateList);
 			currentGoalInputs.clear();
 			connections.clear();
 			seenNodes.clear();
@@ -183,36 +179,37 @@ public class GraphSpecies extends Species {
 			// First create the if branch (i.e. specific branch)
 			if (mergedGraph != null)
 				addToCandidateListFromEdges(goal, mergedGraph, seenNodes,
-						candidateList);
+						ifCandidateList);
 			else
-				addToCandidateList(goal, seenNodes, relevant, candidateList,
+				addToCandidateList(goal, seenNodes, relevant, ifCandidateList,
 						init, true, true);
 
-			Collections.shuffle(candidateList, init.random);
+			Collections.shuffle(ifCandidateList, init.random);
 			finishConstructingBranchedGraph(conditionNode.specificChild,
-					candidateList, connections, currentGoalInputs, init,
+					ifCandidateList, connections, currentGoalInputs, init,
 					newGraph, mergedGraph, seenNodes, relevant,
-					ifSeparateAncestors);
+					ifSeparateAncestors, false);
 
 			// Now create the else branch (i.e. general branch)
 			allowedAncestors.add(goal.getName());
 			Set<String> elseSeparateAncestors = new HashSet<String>(allowedAncestors);
+			List<Node> elseCandidateList = new ArrayList<Node>(candidateList);
 			currentGoalInputs.clear();
 			connections.clear();
 			seenNodes.clear();
 
 			if (mergedGraph != null)
 				addToCandidateListFromEdges(goal, mergedGraph, seenNodes,
-						candidateList);
+				elseCandidateList);
 			else
-				addToCandidateList(goal, seenNodes, relevant, candidateList,
+				addToCandidateList(goal, seenNodes, relevant, elseCandidateList,
 						init, true, false);
 
-			Collections.shuffle(candidateList, init.random);
+			Collections.shuffle(elseCandidateList, init.random);
 			finishConstructingBranchedGraph(conditionNode.generalChild,
-					candidateList, connections, currentGoalInputs, init,
+			elseCandidateList, connections, currentGoalInputs, init,
 					newGraph, mergedGraph, seenNodes, relevant,
-					elseSeparateAncestors);
+					elseSeparateAncestors, false);
 
 		} else {
 			Set<Node> nodeSet = new HashSet<Node>(newGraph.nodeMap.values());
@@ -245,12 +242,13 @@ public class GraphSpecies extends Species {
 							connections.put(e.getFromNode().getName(), e);
 						}
 					}
-					connectCandidateToGraphByInputs(goal, connections,
-							newGraph, init, currentGoalInputs, null, "");
 				}
 			}
+			connectCandidateToGraphByInputs(goal, connections,
+					newGraph, init, currentGoalInputs, null, "");
 		}
-		init.removeDanglingNodes(newGraph);
+		if (removeDangling)
+		    init.removeDanglingNodes(newGraph);
 	}
 
 	private void addToCandidateListFromEdges (Node n, GraphIndividual mergedGraph, Set<Node> seenNode, List<Node> candidateList) {
@@ -335,7 +333,6 @@ public class GraphSpecies extends Species {
 		if (n.getName().equals("start"))
 			taxonomyOutputs = init.startNode.getTaxonomyOutputs();
 		else if (isCond) {
-			candidateList.clear();
 			if (isIfBranch) {
 				taxonomyOutputs = n.getSpecificTaxonomyOutputs();
 			}

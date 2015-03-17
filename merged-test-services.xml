@@ -26,6 +26,7 @@
   <service name="serv002" Res="0.0" Ava="1.0" Suc="1.0" Rel="1.0" Lat="0.0" Pri="0.0">
       <inputs>
 		<instance name="inst629868591"/>
+		<instance name="inst6617000"/>
       </inputs>
       <outputs-possibilities>
           <outputs prob="0.6">
