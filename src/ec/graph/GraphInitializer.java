@@ -4,8 +4,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -45,7 +47,6 @@ public class GraphInitializer extends SimpleInitializer {
 	public List<Node> endNodes = new ArrayList<Node>();
 	public List<Node> condNodes = new ArrayList<Node>();
 	public List<String> suffixList = new ArrayList<String>();
-	public List<Node> conditionNodes;
 	public GraphRandom random;
 
 	public final double minAvailability = 0.0;
@@ -151,7 +152,7 @@ public class GraphInitializer extends SimpleInitializer {
 			List<List<String>> outputPossibilities = new ArrayList<List<String>>();
 			outputPossibilities.add(outsGeneral);
 			outputPossibilities.add(outsSpecific);
-			Node condNode = new Node("cond" + j, mockQos, c.general, c.specific, outputPossibilities);
+			Node condNode = new Node("cond" + j, mockQos, c.general, c.specific, outputPossibilities, null, null);
 			suffixList.add(condNode.getName());
 			condNode.setTaskNode(c);
 			condNodes.add(condNode);
@@ -435,12 +436,16 @@ public class GraphInitializer extends SimpleInitializer {
 	        graph.nodeMap.remove( n.getName() );
 	        graph.considerableNodeMap.remove( n.getName() );
 	        for (Edge e : n.getIncomingEdgeList()) {
-	            e.getFromNode().getOutgoingEdgeList().remove( e );
-	            graph.edgeList.remove( e );
-	            graph.considerableEdgeList.remove( e );
+	        	removeAllOccurrences(e.getFromNode().getOutgoingEdgeList(), e);
+	        	removeAllOccurrences(graph.edgeList, e);
+	        	removeAllOccurrences(graph.considerableEdgeList, e);
 	            removeDangling(e.getFromNode(), graph);
 	        }
 	    }
+	}
+
+	private <T> void removeAllOccurrences(List<T> list, T item) {
+		while(list.remove(item)){}
 	}
 
 	/**

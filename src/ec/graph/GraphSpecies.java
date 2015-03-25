@@ -16,6 +16,7 @@ import ec.graph.taskNodes.TaskNode;
 import ec.util.Parameter;
 
 public class GraphSpecies extends Species {
+
 	@Override
 	public Parameter defaultBase() {
 		return new Parameter("graphspecies");
@@ -43,7 +44,7 @@ public class GraphSpecies extends Species {
 		// Connect start node
 		connectCandidateToGraphByInputs(start, connections, newGraph, init, currentGoalInputs, null, "");
 
-		Set<Node> seenNodes = new HashSet<Node>();
+		Set<String> seenNodes = new HashSet<String>(); // XXX Change seen nodes to be a set of base name strings
 		Set<Node> relevant = init.relevant;
 		List<Node> candidateList = new ArrayList<Node>();
 
@@ -171,44 +172,44 @@ public class GraphSpecies extends Species {
 			ConditionNode conditionNode = (ConditionNode) taskNode;
 			allowedAncestors.add(goal.getName());
 			Set<String> ifSeparateAncestors = new HashSet<String>(allowedAncestors);
+			Set<Node> ifSeenNodes = new HashSet<Node>(seenNodes);
 			List<Node> ifCandidateList = new ArrayList<Node>(candidateList);
 			currentGoalInputs.clear();
 			connections.clear();
-			seenNodes.clear();
 
 			// First create the if branch (i.e. specific branch)
 			if (mergedGraph != null)
-				addToCandidateListFromEdges(goal, mergedGraph, seenNodes,
+				addToCandidateListFromEdges(goal, mergedGraph, ifSeenNodes,
 						ifCandidateList);
 			else
-				addToCandidateList(goal, seenNodes, relevant, ifCandidateList,
+				addToCandidateList(goal, ifSeenNodes, relevant, ifCandidateList,
 						init, true, true);
 
 			Collections.shuffle(ifCandidateList, init.random);
 			finishConstructingBranchedGraph(conditionNode.specificChild,
 					ifCandidateList, connections, currentGoalInputs, init,
-					newGraph, mergedGraph, seenNodes, relevant,
+					newGraph, mergedGraph, ifSeenNodes, relevant,
 					ifSeparateAncestors, false);
 
 			// Now create the else branch (i.e. general branch)
 			allowedAncestors.add(goal.getName());
 			Set<String> elseSeparateAncestors = new HashSet<String>(allowedAncestors);
+			Set<Node> elseSeenNodes = new HashSet<Node>(seenNodes);
 			List<Node> elseCandidateList = new ArrayList<Node>(candidateList);
 			currentGoalInputs.clear();
 			connections.clear();
-			seenNodes.clear();
 
 			if (mergedGraph != null)
-				addToCandidateListFromEdges(goal, mergedGraph, seenNodes,
+				addToCandidateListFromEdges(goal, mergedGraph, elseSeenNodes,
 				elseCandidateList);
 			else
-				addToCandidateList(goal, seenNodes, relevant, elseCandidateList,
+				addToCandidateList(goal, elseSeenNodes, relevant, elseCandidateList,
 						init, true, false);
 
 			Collections.shuffle(elseCandidateList, init.random);
 			finishConstructingBranchedGraph(conditionNode.generalChild,
 			elseCandidateList, connections, currentGoalInputs, init,
-					newGraph, mergedGraph, seenNodes, relevant,
+					newGraph, mergedGraph, elseSeenNodes, relevant,
 					elseSeparateAncestors, false);
 
 		} else {
@@ -247,8 +248,10 @@ public class GraphSpecies extends Species {
 			connectCandidateToGraphByInputs(goal, connections,
 					newGraph, init, currentGoalInputs, null, "");
 		}
-		if (removeDangling)
+
+		if (removeDangling) {
 		    init.removeDanglingNodes(newGraph);
+		}
 	}
 
 	private void addToCandidateListFromEdges (Node n, GraphIndividual mergedGraph, Set<Node> seenNode, List<Node> candidateList) {
@@ -289,7 +292,6 @@ public class GraphSpecies extends Species {
 			if (isConditionalTask) {
 				if (candidate.getOutputPossibilities().size() > 1) {
 
-					ConditionNode condNode = (ConditionNode) taskNode;
 					Node node = taskNode.getCorrespondingNode();
 					Set<String> generalConds = new HashSet<String>();
 					Set<String> specificConds = new HashSet<String>();
@@ -352,4 +354,76 @@ public class GraphSpecies extends Species {
 			}
 		}
 	}
+
+	//==========================================================================================================================
+		//                                                 Debugging Routines
+		//==========================================================================================================================
+
+	    public static void structureValidator( GraphIndividual graph ) {
+	        for ( Edge e : graph.edgeList ) {
+	            //Node fromNode = e.getFromNode();
+	            Node fromNode = graph.nodeMap.get( e.getFromNode().getName());
+
+	            boolean isContained = false;
+	            for ( Edge outEdge : fromNode.getOutgoingEdgeList() ) {
+	                if ( e == outEdge ) {
+	                    isContained = true;
+	                    break;
+	                }
+	            }
+
+	            if ( !isContained ) {
+	                System.out.println( "Outgoing edge for node " + fromNode.getName() + " not detected." );
+	            }
+
+	            //Node toNode = e.getToNode();
+	            Node toNode = graph.nodeMap.get( e.getToNode().getName());
+
+	            isContained = false;
+	            for ( Edge inEdge : toNode.getIncomingEdgeList() ) {
+	                if ( e == inEdge ) {
+	                    isContained = true;
+	                    break;
+	                }
+	            }
+
+	            if ( !isContained ) {
+	                System.out.println( "Incoming edge for node " + toNode.getName() + " not detected." );
+	            }
+	        }
+	        System.out.println("************************************");
+	    }
+
+	    public static void structureValidator2( GraphIndividual graph ) {
+	        for ( Edge e : graph.considerableEdgeList ) {
+	            Node fromNode = graph.considerableNodeMap.get( e.getFromNode().getName());
+
+	            boolean isContained = false;
+	            for ( Edge outEdge : fromNode.getOutgoingEdgeList() ) {
+	                if ( e == outEdge ) {
+	                    isContained = true;
+	                    break;
+	                }
+	            }
+
+	            if ( !isContained ) {
+	                System.out.println( "Considerable: Outgoing edge for node " + fromNode.getName() + " not detected." );
+	            }
+
+	            Node toNode = graph.considerableNodeMap.get( e.getToNode().getName());
+
+	            isContained = false;
+	            for ( Edge inEdge : toNode.getIncomingEdgeList() ) {
+	                if ( e == inEdge ) {
+	                    isContained = true;
+	                    break;
+	                }
+	            }
+
+	            if ( !isContained ) {
+	                System.out.println( "Considerable: Incoming edge for node " + toNode.getName() + " not detected." );
+	            }
+	        }
+	        System.out.println("-----------------------------------------------");
+	    }
 }

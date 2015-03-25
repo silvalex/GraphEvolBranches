@@ -32,13 +32,15 @@ public class Node implements Cloneable {
 		this.probabilities = probabilities;
 	}
 
-	public Node(String name, double[] qos, String generalCondition, String specificCondition, List<List<String>> outputPossibilities) {
+	public Node(String name, double[] qos, String generalCondition, String specificCondition, List<List<String>> outputPossibilities, List<Float> probabilities, TaskNode taskNode) {
 		this.name = name;
 		this.baseName = name;
 		this.qos = qos;
 		this.generalCondition = generalCondition;
 		this.specificCondition = specificCondition;
 		this.outputPossibilities = outputPossibilities;
+		this.probabilities = probabilities;
+		this.taskNode = taskNode;
 	}
 
 	public String getGeneralCondition() {
@@ -95,7 +97,7 @@ public class Node implements Cloneable {
 			return new Node(name, qos, inputs, outputPossibilities, probabilities);
 		// Otherwise, it is a conditional node
 		else {
-			Node n = new Node(name, qos, generalCondition, specificCondition, outputPossibilities);
+			Node n = new Node(name, qos, generalCondition, specificCondition, outputPossibilities, probabilities, taskNode);
 			n.taxonomyOutputs = taxonomyOutputs;
 			n.generalTaxonomyOutputs = generalTaxonomyOutputs;
 			n.specificTaxonomyOutputs = specificTaxonomyOutputs;

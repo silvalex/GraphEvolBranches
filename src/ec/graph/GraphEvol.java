@@ -1,10 +1,14 @@
 package ec.graph;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import ec.EvolutionState;
 import ec.Individual;
 import ec.Problem;
+import ec.graph.taskNodes.ConditionNode;
+import ec.graph.taskNodes.TaskNode;
 import ec.simple.SimpleFitness;
 import ec.simple.SimpleProblemForm;
 import ec.util.Log;
@@ -33,15 +37,70 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
         double t = 0.0;
         double c = 0.0;
 
+        Set<String> serviceNames = new HashSet<String>();
+        Map<String, Set<String>> serviceSuffixMap = new HashMap<String, Set<String>>();
+        Map<String, Double> costBySuffixMap = new HashMap<String, Double>();
+        Map<String, Double> availabilityBySuffixMap = new HashMap<String, Double>();
+        Map<String, Double> reliabilityBySuffixMap = new HashMap<String, Double>();
+
         for (Node n : ind2.considerableNodeMap.values()) {
-        	double[] qos = n.getQos();
-        	a *= qos[GraphInitializer.AVAILABILITY];
-        	r *= qos[GraphInitializer.RELIABILITY];
-        	c += qos[GraphInitializer.COST];
+        	if (!n.getName().equals("start") && !n.getName().startsWith("cond") && !n.getName().startsWith("end")) {
+        		String[] tokens = n.getName().split("-");
+        		serviceNames.add(tokens[0]);
+
+        		Set<String> services = serviceSuffixMap.get(tokens[tokens.length-1]);
+        		if (services == null) {
+        			services = new HashSet<String>();
+        			serviceSuffixMap.put(tokens[tokens.length-1], services);
+        		}
+        		services.add(tokens[0]);
+        	}
         }
 
-        // Calculate longest time
-        t = findLongestPath(ind2);
+        for (String suffix : serviceSuffixMap.keySet()) {
+        	double cost = 0.0;
+        	double availability = 1.0;
+        	double reliability = 1.0;
+        	for (String name : serviceSuffixMap.get(suffix)) {
+        		Node node = init.serviceMap.get(name);
+        		double[] qos = node.getQos();
+        		cost += qos[GraphInitializer.COST];
+        		availability *= qos[GraphInitializer.AVAILABILITY];
+        		reliability *= qos[GraphInitializer.RELIABILITY];
+        	}
+        	costBySuffixMap.put(suffix, cost);
+        	availabilityBySuffixMap.put(suffix, availability);
+        	reliabilityBySuffixMap.put(suffix, reliability);
+        }
+
+        Map<String, Double> timeByEndMap = new HashMap<String, Double>();
+        Map<String, Double> probByEndMap = new HashMap<String, Double>();
+        Map<String, Double> costByEndMap = new HashMap<String, Double>();
+        Map<String, Double> availabilityByEndMap = new HashMap<String, Double>();
+        Map<String, Double> reliabilityByEndMap = new HashMap<String, Double>();
+
+        for (Node endNode : init.endNodes) {
+        	double time = findLongestPath(ind2, endNode.getName());
+        	timeByEndMap.put(endNode.getName(), time);
+        }
+
+        // Calculate probabilities by end
+        calculateTreeProbs(init.taskTree.getChildren().get(0), probByEndMap, costByEndMap, availabilityByEndMap, reliabilityByEndMap,
+        		costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, 1.0, new HashSet<String>(), ind2);
+
+
+        for (Node endNode : init.endNodes) {
+        	double prob = probByEndMap.get(endNode.getName());
+        	double time = timeByEndMap.get(endNode.getName());
+        	double cost = costByEndMap.get(endNode.getName());
+        	double availability = availabilityByEndMap.get(endNode.getName());
+        	double reliability = reliabilityByEndMap.get(endNode.getName());
+
+        	t += (prob * time);
+        	c += (prob * cost);
+        	a += (prob * availability);
+        	r += (prob * reliability);
+        }
 
         a = normaliseAvailability(a, init);
         r = normaliseReliability(r, init);
@@ -58,6 +117,37 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 
         ind2.evaluated = true;
 	}
+
+    private void calculateTreeProbs(TaskNode taskNode, Map<String, Double> probByEndMap, Map<String, Double> costByEndMap, Map<String, Double> availabilityByEndMap,
+    		Map<String, Double> reliabilityByEndMap, Map<String, Double> costBySuffixMap, Map<String,Double> availabilityBySuffixMap,
+    		Map<String, Double> reliabilityBySuffixMap, Double prob, Set<String> suffixes, GraphIndividual graph) {
+    	Set<String> newSuffixes = new HashSet<String>(suffixes);
+    	newSuffixes.add(taskNode.getCorrespondingNode().getName());
+
+    	if (taskNode instanceof ConditionNode) {
+    		ConditionNode condNode = (ConditionNode) taskNode;
+    		// Recurse on if-child
+    		calculateTreeProbs(condNode.specificChild, probByEndMap, costByEndMap, availabilityByEndMap, reliabilityByEndMap,
+    				costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, prob * graph.nodeMap.get(condNode.getCorrespondingNode().getName()).getProbabilities().get(1), newSuffixes, graph);
+    		// Recurse on else-child
+    		calculateTreeProbs(condNode.generalChild, probByEndMap, costByEndMap, availabilityByEndMap, reliabilityByEndMap,
+    				costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, prob * graph.nodeMap.get(condNode.getCorrespondingNode().getName()).getProbabilities().get(0), newSuffixes, graph);
+    	}
+    	else {
+    		probByEndMap.put(taskNode.getCorrespondingNode().getName(), prob);
+    		double cost = 0.0;
+    		double availability = 1.0;
+    		double reliability = 1.0;
+    		for (String suffix : suffixes) {
+    			cost += costBySuffixMap.get(suffix);
+    			availability *= availabilityBySuffixMap.get(suffix);
+    			reliability *= reliabilityBySuffixMap.get(suffix);
+    		}
+    		costByEndMap.put(taskNode.getCorrespondingNode().getName(), cost);
+    		availabilityByEndMap.put(taskNode.getCorrespondingNode().getName(), availability);
+    		reliabilityByEndMap.put(taskNode.getCorrespondingNode().getName(), reliability);
+    	}
+    }
 
     public void evaluateOwls(final GraphInitializer init, final EvolutionState state, final Individual ind, final int subpopulation, final int threadnum) {
 
@@ -101,17 +191,21 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 	}
 
 	private double normaliseTime(double time, GraphInitializer init) {
-		if (init.maxTime - init.minTime == 0.0)
+		double numEnds = init.endNodes.size();
+
+		if ((init.maxTime * numEnds) - (init.minTime * numEnds) == 0.0)
 			return 1.0;
 		else
-			return (init.maxTime - time)/(init.maxTime - init.minTime);
+			return ((init.maxTime * numEnds) - time)/((init.maxTime * numEnds) - (init.minTime * numEnds));
 	}
 
 	private double normaliseCost(double cost, GraphInitializer init) {
-		if (init.maxCost - init.minCost == 0.0)
+		double numEnds = init.endNodes.size();
+
+		if ((init.maxCost * numEnds) - (init.minCost * numEnds) == 0.0)
 			return 1.0;
 		else
-			return (init.maxCost - cost)/(init.maxCost - init.minCost);
+			return ((init.maxCost * numEnds) - cost)/((init.maxCost * numEnds) - (init.minCost * numEnds));
 	}
 
 	/**
@@ -121,7 +215,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 	 * @param g
 	 * @return list of edges composing longest path
 	 */
-	private double findLongestPath(GraphIndividual g) {
+	private double findLongestPath(GraphIndividual g, String endNodeName) {
 		Map<String, Double> distance = new HashMap<String, Double>();
 		Map<String, Node> predecessor = new HashMap<String, Node>();
 
@@ -136,6 +230,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 		// Step 2: relax edges repeatedly
 		for (int i = 1; i < g.considerableNodeMap.size(); i++) {
 			for (Edge e : g.considerableEdgeList) {
+				double dist = distance.get(e.getToNode().getName());
 				if ((distance.get(e.getFromNode().getName()) -
 				        e.getToNode().getQos()[GraphInitializer.TIME])
 				        < distance.get(e.getToNode().getName())) {
@@ -146,7 +241,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 		}
 
 		// Now retrieve total cost
-		Node pre = predecessor.get("end");
+		Node pre = predecessor.get(endNodeName);
 		double totalTime = 0.0;
 
 		while (pre != null) {
