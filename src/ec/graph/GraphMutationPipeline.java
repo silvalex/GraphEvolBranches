@@ -125,13 +125,12 @@ public class GraphMutationPipeline extends BreedingPipeline {
                 Set<Node> unused = new HashSet<Node>(init.relevant);
                 Set<Node> relevant = init.relevant;
                 Set<String> currentGoalInputs = new HashSet<String>();
-                Set<Node> seenNodes = new HashSet<Node>();
+                Set<String> seenNodes = new HashSet<String>();
                 List<Node> candidateList = new ArrayList<Node>();
                 Set<String> allowedAncestors = new HashSet<String>();
 
                 for (Node node: graph.nodeMap.values()) {
                     unused.remove( node );
-                    //seenNodes.add( node ); XXX
                 }
 
                 // Must add all nodes as seen before adding candidate list entries. Do this by navigating the graph backwards, from the selected node

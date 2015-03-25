@@ -68,7 +68,7 @@ public class GraphSpecies extends Species {
 			List<Node> candidateList, Map<String, Edge> connections,
 			Set<String> currentGoalInputs, GraphInitializer init,
 			GraphIndividual newGraph, GraphIndividual mergedGraph,
-			Set<Node> seenNodes, Set<Node> relevant,
+			Set<String> seenNodes, Set<Node> relevant,
 			Set<String> allowedAncestors, boolean removeDangling) {
 
 		boolean goalReached = false;
@@ -172,7 +172,7 @@ public class GraphSpecies extends Species {
 			ConditionNode conditionNode = (ConditionNode) taskNode;
 			allowedAncestors.add(goal.getName());
 			Set<String> ifSeparateAncestors = new HashSet<String>(allowedAncestors);
-			Set<Node> ifSeenNodes = new HashSet<Node>(seenNodes);
+			Set<String> ifSeenNodes = new HashSet<String>(seenNodes);
 			List<Node> ifCandidateList = new ArrayList<Node>(candidateList);
 			currentGoalInputs.clear();
 			connections.clear();
@@ -194,7 +194,7 @@ public class GraphSpecies extends Species {
 			// Now create the else branch (i.e. general branch)
 			allowedAncestors.add(goal.getName());
 			Set<String> elseSeparateAncestors = new HashSet<String>(allowedAncestors);
-			Set<Node> elseSeenNodes = new HashSet<Node>(seenNodes);
+			Set<String> elseSeenNodes = new HashSet<String>(seenNodes);
 			List<Node> elseCandidateList = new ArrayList<Node>(candidateList);
 			currentGoalInputs.clear();
 			connections.clear();
@@ -254,17 +254,17 @@ public class GraphSpecies extends Species {
 		}
 	}
 
-	private void addToCandidateListFromEdges (Node n, GraphIndividual mergedGraph, Set<Node> seenNode, List<Node> candidateList) {
-		seenNode.add(n);
+	private void addToCandidateListFromEdges (Node n, GraphIndividual mergedGraph, Set<String> seenNode, List<Node> candidateList) {
+		seenNode.add(n.getBaseName());
 
 		Node original = mergedGraph.nodeMap.get(n.getName());
 
 		for (Edge e : original.getOutgoingEdgeList()) {
 			// Add servicesWithInput from taxonomy node as potential candidates to be connected
 			Node current = e.getToNode();
-			if (!seenNode.contains(current)) {
+			if (!seenNode.contains(current.getBaseName())) {
 				candidateList.add(current);
-				seenNode.add(current);
+				seenNode.add(current.getBaseName());
 			}
 		}
 	}
@@ -329,8 +329,8 @@ public class GraphSpecies extends Species {
 		return new Pair<Boolean, Node>(false, null);
 	}
 
-	public void addToCandidateList(Node n, Set<Node> seenNode, Set<Node> relevant, List<Node> candidateList, GraphInitializer init, boolean isCond, boolean isIfBranch) {
-		seenNode.add(n);
+	public void addToCandidateList(Node n, Set<String> seenNode, Set<Node> relevant, List<Node> candidateList, GraphInitializer init, boolean isCond, boolean isIfBranch) {
+		seenNode.add(n.getBaseName());
 		List<TaxonomyNode> taxonomyOutputs;
 		if (n.getName().equals("start"))
 			taxonomyOutputs = init.startNode.getTaxonomyOutputs();
@@ -347,9 +347,9 @@ public class GraphSpecies extends Species {
 		for (TaxonomyNode t : taxonomyOutputs) {
 			// Add servicesWithInput from taxonomy node as potential candidates to be connected
 			for (Node current : t.servicesWithInput) {
-				if (!seenNode.contains(current) && relevant.contains(current)) {
+				if (!seenNode.contains(current.getBaseName()) && relevant.contains(current)) {
 					candidateList.add(current);
-					seenNode.add(current);
+					seenNode.add(current.getBaseName());
 				}
 			}
 		}
