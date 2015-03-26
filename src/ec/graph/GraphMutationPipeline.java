@@ -123,7 +123,11 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
                 // Create data structures
                 Set<Node> relevant = init.relevant;
+                
+                //TODO: Replace the following with a method that resets the currentGoalInputs using the outputs
+                // of ancestor nodes in light of the new task, instead of clearing it
                 Set<String> currentGoalInputs = new HashSet<String>();
+                
                 Set<String> seenNodes = new HashSet<String>();
                 List<Node> candidateList = new ArrayList<Node>();
                 Set<String> allowedAncestors = new HashSet<String>();

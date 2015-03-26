@@ -43,7 +43,7 @@ public class GraphSpecies extends Species {
 		// Connect start node
 		connectCandidateToGraphByInputs(start, connections, newGraph, init, currentGoalInputs, null, "");
 
-		Set<String> seenNodes = new HashSet<String>(); // XXX Change seen nodes to be a set of base name strings
+		Set<String> seenNodes = new HashSet<String>();
 		Set<Node> relevant = init.relevant;
 		List<Node> candidateList = new ArrayList<Node>();
 
@@ -80,6 +80,10 @@ public class GraphSpecies extends Species {
 
 			candidateLoop: for (index = 0; index < candidateList.size(); index++) {
 				Node candidate = candidateList.get(index).clone();
+				
+				if (candidate.getBaseName().equals( "serv1804276635" )) {
+				    int i = 0;
+				}
 
 				// For all of the candidate inputs, check that there is a
 				// service already in the graph
@@ -134,6 +138,9 @@ public class GraphSpecies extends Species {
 						taskNode, "-"
 								+ taskNode.getCorrespondingNode().getName());
 				goalReached = goalCheckPair.a;
+				if (goalReached) {
+				    int i = 0;
+				}
 
 				allowedAncestors.add(candidate.getName());
 				if (mergedGraph != null)
@@ -173,6 +180,9 @@ public class GraphSpecies extends Species {
 			Set<String> ifSeparateAncestors = new HashSet<String>(allowedAncestors);
 			Set<String> ifSeenNodes = new HashSet<String>(seenNodes);
 			List<Node> ifCandidateList = new ArrayList<Node>(candidateList);
+			
+			//TODO: Replace the following with a method that resets the currentGoalInputs using the outputs
+			// of ancestor nodes in light of the new task, instead of clearing it
 			currentGoalInputs.clear();
 			connections.clear();
 
@@ -195,6 +205,9 @@ public class GraphSpecies extends Species {
 			Set<String> elseSeparateAncestors = new HashSet<String>(allowedAncestors);
 			Set<String> elseSeenNodes = new HashSet<String>(seenNodes);
 			List<Node> elseCandidateList = new ArrayList<Node>(candidateList);
+			
+            //TODO: Replace the following with a method that resets the currentGoalInputs using the outputs
+            // of ancestor nodes in light of the new task, instead of clearing it
 			currentGoalInputs.clear();
 			connections.clear();
 
