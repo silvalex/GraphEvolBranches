@@ -12,4 +12,5 @@ public interface TaskNode {
     void getAllConditionNodes(Set<ConditionNode> conditions);
     void setCorrespondingNode(Node corresponding);
     Node getCorrespondingNode();
+    TaskNode getParent();
 }

@@ -445,6 +445,7 @@ public class GraphInitializer extends SimpleInitializer {
 	}
 
 	private <T> void removeAllOccurrences(List<T> list, T item) {
+		int i = 1;
 		while(list.remove(item)){}
 	}
 

@@ -32,8 +32,8 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
             state.output.fatal("Whoa!  It's not a GraphIndividual!!!",null);
         GraphIndividual ind2 = (GraphIndividual)ind;
 
-        double a = 1.0;
-        double r = 1.0;
+        double a = 0.0;
+        double r = 0.0;
         double t = 0.0;
         double c = 0.0;
 
@@ -107,7 +107,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
         t = normaliseTime(t, init);
         c = normaliseCost(c, init);
 
-        double fitness = init.w1 * a + init.w2 * r + init.w3 * t + init.w4 * c;
+        double fitness = init.w1 * a + init.w2 * r + init.w3 * (1.0 - t) + init.w4 * (1.0 - c);
 
         ((SimpleFitness)ind2.fitness).setFitness(state,
                 // ...the fitness...
@@ -194,7 +194,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 		double numEnds = init.endNodes.size();
 
 		if ((init.maxTime * numEnds) - (init.minTime * numEnds) == 0.0)
-			return 1.0;
+			return 0.0;
 		else
 			return ((init.maxTime * numEnds) - time)/((init.maxTime * numEnds) - (init.minTime * numEnds));
 	}
@@ -203,7 +203,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 		double numEnds = init.endNodes.size();
 
 		if ((init.maxCost * numEnds) - (init.minCost * numEnds) == 0.0)
-			return 1.0;
+			return 0.0;
 		else
 			return ((init.maxCost * numEnds) - cost)/((init.maxCost * numEnds) - (init.minCost * numEnds));
 	}

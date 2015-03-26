@@ -52,4 +52,9 @@ public class ConditionNode implements TaskNode {
 	public Node getCorrespondingNode() {
 		return correspondingNode;
 	}
+
+	@Override
+	public TaskNode getParent(){
+		return parent;
+	}
 }

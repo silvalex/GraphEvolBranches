@@ -122,18 +122,35 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
 
                 // Create data structures
-                Set<Node> unused = new HashSet<Node>(init.relevant);
                 Set<Node> relevant = init.relevant;
                 Set<String> currentGoalInputs = new HashSet<String>();
                 Set<String> seenNodes = new HashSet<String>();
                 List<Node> candidateList = new ArrayList<Node>();
                 Set<String> allowedAncestors = new HashSet<String>();
 
-                for (Node node: graph.nodeMap.values()) {
-                    unused.remove( node );
+                // Must add all nodes as seen before adding candidate list entries. Do this by navigating the graph backwards, from the selected nodes
+                Set<String> seenSuffix = new HashSet<String>();
+                TaskNode currTask = taskNode;
+                while (currTask != null) {
+                	seenSuffix.add(currTask.getCorrespondingNode().getName());
+                	currTask = currTask.getParent();
                 }
 
-                // Must add all nodes as seen before adding candidate list entries. Do this by navigating the graph backwards, from the selected node
+                for (Node node : graph.nodeMap.values()) {
+                	String[] nameTokens = node.getName().split("-");
+                	String nameTag;
+                	if (nameTokens.length > 1) {
+                		nameTag = nameTokens[nameTokens.length - 1];
+                	}
+                	else
+                		nameTag = nameTokens[0];
+
+                	if (seenSuffix.contains(nameTag)) {
+                		seenNodes.add(node.getBaseName());
+                	}
+                }
+
+                // Need to run through the tree again to add candidates to the candidate list (must be done after all all seen nodes were recorded)
                 Queue<Node> queue = new LinkedList<Node>();
 
                 for (Edge e : selected.getIncomingEdgeList()) {
@@ -166,11 +183,9 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
                 Collections.shuffle(candidateList, init.random);
                 Map<String,Edge> connections = new HashMap<String,Edge>();
-                graph.unused = unused;
 
                 // Continue constructing graph
                 species.finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, graph, null, seenNodes, relevant, allowedAncestors, true);
-
             }
             graph.evaluated=false;
         }

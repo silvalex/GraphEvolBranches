@@ -16,7 +16,6 @@ public class GraphIndividual extends Individual {
 	public Map<String, Node> considerableNodeMap= new HashMap<String, Node>();
 	public List<Edge> edgeList = new ArrayList<Edge>();
 	public List<Edge> considerableEdgeList = new ArrayList<Edge>();
-	public Set<Node> unused;
 	public int longestPathLength;
 	public int numAtomicServices;
 
@@ -24,13 +23,6 @@ public class GraphIndividual extends Individual {
 		super();
 		super.fitness = new SimpleFitness();
 		super.species = new GraphSpecies();
-	}
-
-	public GraphIndividual(Set<Node> unused) {
-		super();
-		super.fitness = new SimpleFitness();
-		super.species = new GraphSpecies();
-		this.unused = unused;
 	}
 
 	@Override

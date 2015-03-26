@@ -33,9 +33,8 @@ public class GraphSpecies extends Species {
 		taskNode = taskNode.getChildren().get(0);
 
 		GraphInitializer init = (GraphInitializer) state.initializer;
-		Set<Node> unused = new HashSet<Node>(init.relevant);
 
-		GraphIndividual newGraph = new GraphIndividual(unused);
+		GraphIndividual newGraph = new GraphIndividual();
 		Node start = init.startNode.clone();
 
 		Set<String> currentGoalInputs = new HashSet<String>();
@@ -271,6 +270,7 @@ public class GraphSpecies extends Species {
 
 	public Pair<Boolean, Node> connectCandidateToGraphByInputs(Node candidate, Map<String,Edge> connections, GraphIndividual graph, GraphInitializer init, Set<String> currentGoalInputs, TaskNode taskNode, String suffix) {
 		candidate.setName(candidate.getName() + suffix);
+
 		graph.nodeMap.put(candidate.getName(), candidate);
 		graph.considerableNodeMap.put(candidate.getName(), candidate);
 		graph.edgeList.addAll(connections.values());
@@ -281,9 +281,6 @@ public class GraphSpecies extends Species {
 			Node fromNode = graph.nodeMap.get(e.getFromNode().getName());
 			fromNode.getOutgoingEdgeList().add(e);
 		}
-
-
-		graph.unused.remove(candidate);
 
 		if (taskNode != null) {
 
@@ -312,8 +309,9 @@ public class GraphSpecies extends Species {
 
 					return new Pair<Boolean, Node>(generalConds.contains(node.getGeneralCondition()) && specificConds.contains(node.getSpecificCondition()), candidate);
 				}
-				else
+				else {
 					return new Pair<Boolean, Node>(false, candidate);
+				}
 			}
 			// Check if goal reached in case of output node
 			else {
@@ -323,9 +321,11 @@ public class GraphSpecies extends Species {
 					if (outputs != null)
 						currentGoalInputs.addAll(outputs);
 				}
+
 				return new Pair<Boolean, Node>(currentGoalInputs.containsAll(taskNode.getCorrespondingNode().getInputs()), null);
 			}
 		}
+
 		return new Pair<Boolean, Node>(false, null);
 	}
 

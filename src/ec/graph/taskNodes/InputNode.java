@@ -44,4 +44,9 @@ public class InputNode implements TaskNode {
 	public Node getCorrespondingNode() {
 		return correspondingNode;
 	}
+
+	@Override
+	public TaskNode getParent(){
+		return parent;
+	}
 }
