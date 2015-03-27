@@ -32,82 +32,83 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
             state.output.fatal("Whoa!  It's not a GraphIndividual!!!",null);
         GraphIndividual ind2 = (GraphIndividual)ind;
 
-        double a = 0.0;
-        double r = 0.0;
-        double t = 0.0;
-        double c = 0.0;
-
-        Set<String> serviceNames = new HashSet<String>();
-        Map<String, Set<String>> serviceSuffixMap = new HashMap<String, Set<String>>();
-        Map<String, Double> costBySuffixMap = new HashMap<String, Double>();
-        Map<String, Double> availabilityBySuffixMap = new HashMap<String, Double>();
-        Map<String, Double> reliabilityBySuffixMap = new HashMap<String, Double>();
-
-        for (Node n : ind2.considerableNodeMap.values()) {
-        	if (!n.getName().equals("start") && !n.getName().startsWith("cond") && !n.getName().startsWith("end")) {
-        		String[] tokens = n.getName().split("-");
-        		serviceNames.add(tokens[0]);
-
-        		Set<String> services = serviceSuffixMap.get(tokens[tokens.length-1]);
-        		if (services == null) {
-        			services = new HashSet<String>();
-        			serviceSuffixMap.put(tokens[tokens.length-1], services);
-        		}
-        		services.add(tokens[0]);
-        	}
-        }
-
-        for (String suffix : serviceSuffixMap.keySet()) {
-        	double cost = 0.0;
-        	double availability = 1.0;
-        	double reliability = 1.0;
-        	for (String name : serviceSuffixMap.get(suffix)) {
-        		Node node = init.serviceMap.get(name);
-        		double[] qos = node.getQos();
-        		cost += qos[GraphInitializer.COST];
-        		availability *= qos[GraphInitializer.AVAILABILITY];
-        		reliability *= qos[GraphInitializer.RELIABILITY];
-        	}
-        	costBySuffixMap.put(suffix, cost);
-        	availabilityBySuffixMap.put(suffix, availability);
-        	reliabilityBySuffixMap.put(suffix, reliability);
-        }
-
-        Map<String, Double> timeByEndMap = new HashMap<String, Double>();
-        Map<String, Double> probByEndMap = new HashMap<String, Double>();
-        Map<String, Double> costByEndMap = new HashMap<String, Double>();
-        Map<String, Double> availabilityByEndMap = new HashMap<String, Double>();
-        Map<String, Double> reliabilityByEndMap = new HashMap<String, Double>();
-
-        for (Node endNode : init.endNodes) {
-        	double time = findLongestPath(ind2, endNode.getName());
-        	timeByEndMap.put(endNode.getName(), time);
-        }
-
-        // Calculate probabilities by end
-        calculateTreeProbs(init.taskTree.getChildren().get(0), probByEndMap, costByEndMap, availabilityByEndMap, reliabilityByEndMap,
-        		costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, 1.0, new HashSet<String>(), ind2);
-
-
-        for (Node endNode : init.endNodes) {
-        	double prob = probByEndMap.get(endNode.getName());
-        	double time = timeByEndMap.get(endNode.getName());
-        	double cost = costByEndMap.get(endNode.getName());
-        	double availability = availabilityByEndMap.get(endNode.getName());
-        	double reliability = reliabilityByEndMap.get(endNode.getName());
-
-        	t += (prob * time);
-        	c += (prob * cost);
-        	a += (prob * availability);
-        	r += (prob * reliability);
-        }
-
-        a = normaliseAvailability(a, init);
-        r = normaliseReliability(r, init);
-        t = normaliseTime(t, init);
-        c = normaliseCost(c, init);
-
-        double fitness = init.w1 * a + init.w2 * r + init.w3 * (1.0 - t) + init.w4 * (1.0 - c);
+//        double a = 0.0;
+//        double r = 0.0;
+//        double t = 0.0;
+//        double c = 0.0;
+//
+//        Set<String> serviceNames = new HashSet<String>();
+//        Map<String, Set<String>> serviceSuffixMap = new HashMap<String, Set<String>>();
+//        Map<String, Double> costBySuffixMap = new HashMap<String, Double>();
+//        Map<String, Double> availabilityBySuffixMap = new HashMap<String, Double>();
+//        Map<String, Double> reliabilityBySuffixMap = new HashMap<String, Double>();
+//
+//        for (Node n : ind2.considerableNodeMap.values()) {
+//        	if (!n.getName().equals("start") && !n.getName().startsWith("cond") && !n.getName().startsWith("end")) {
+//        		String[] tokens = n.getName().split("-");
+//        		serviceNames.add(tokens[0]);
+//
+//        		Set<String> services = serviceSuffixMap.get(tokens[tokens.length-1]);
+//        		if (services == null) {
+//        			services = new HashSet<String>();
+//        			serviceSuffixMap.put(tokens[tokens.length-1], services);
+//        		}
+//        		services.add(tokens[0]);
+//        	}
+//        }
+//
+//        for (String suffix : serviceSuffixMap.keySet()) {
+//        	double cost = 0.0;
+//        	double availability = 1.0;
+//        	double reliability = 1.0;
+//        	for (String name : serviceSuffixMap.get(suffix)) {
+//        		Node node = init.serviceMap.get(name);
+//        		double[] qos = node.getQos();
+//        		cost += qos[GraphInitializer.COST];
+//        		availability *= qos[GraphInitializer.AVAILABILITY];
+//        		reliability *= qos[GraphInitializer.RELIABILITY];
+//        	}
+//        	costBySuffixMap.put(suffix, cost);
+//        	availabilityBySuffixMap.put(suffix, availability);
+//        	reliabilityBySuffixMap.put(suffix, reliability);
+//        }
+//
+//        Map<String, Double> timeByEndMap = new HashMap<String, Double>();
+//        Map<String, Double> probByEndMap = new HashMap<String, Double>();
+//        Map<String, Double> costByEndMap = new HashMap<String, Double>();
+//        Map<String, Double> availabilityByEndMap = new HashMap<String, Double>();
+//        Map<String, Double> reliabilityByEndMap = new HashMap<String, Double>();
+//
+//        for (Node endNode : init.endNodes) {
+//        	double time = findLongestPath(ind2, endNode.getName());
+//        	timeByEndMap.put(endNode.getName(), time);
+//        }
+//
+//        // Calculate probabilities by end
+//        calculateTreeProbs(init.taskTree.getChildren().get(0), probByEndMap, costByEndMap, availabilityByEndMap, reliabilityByEndMap,
+//        		costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, 1.0, new HashSet<String>(), ind2);
+//
+//
+//        for (Node endNode : init.endNodes) {
+//        	double prob = probByEndMap.get(endNode.getName());
+//        	double time = timeByEndMap.get(endNode.getName());
+//        	double cost = costByEndMap.get(endNode.getName());
+//        	double availability = availabilityByEndMap.get(endNode.getName());
+//        	double reliability = reliabilityByEndMap.get(endNode.getName());
+//
+//        	t += (prob * time);
+//        	c += (prob * cost);
+//        	a += (prob * availability);
+//        	r += (prob * reliability);
+//        }
+//
+//        a = normaliseAvailability(a, init);
+//        r = normaliseReliability(r, init);
+//        t = normaliseTime(t, init);
+//        c = normaliseCost(c, init);
+//
+//        double fitness = init.w1 * a + init.w2 * r + init.w3 * (1.0 - t) + init.w4 * (1.0 - c);
+        double fitness = 0.0;
 
         ((SimpleFitness)ind2.fitness).setFitness(state,
                 // ...the fitness...

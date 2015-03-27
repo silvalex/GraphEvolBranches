@@ -80,10 +80,6 @@ public class GraphSpecies extends Species {
 
 			candidateLoop: for (index = 0; index < candidateList.size(); index++) {
 				Node candidate = candidateList.get(index).clone();
-				
-				if (candidate.getBaseName().equals( "serv1804276635" )) {
-				    int i = 0;
-				}
 
 				// For all of the candidate inputs, check that there is a
 				// service already in the graph
@@ -180,10 +176,28 @@ public class GraphSpecies extends Species {
 			Set<String> ifSeparateAncestors = new HashSet<String>(allowedAncestors);
 			Set<String> ifSeenNodes = new HashSet<String>(seenNodes);
 			List<Node> ifCandidateList = new ArrayList<Node>(candidateList);
-			
+
 			//TODO: Replace the following with a method that resets the currentGoalInputs using the outputs
 			// of ancestor nodes in light of the new task, instead of clearing it
 			currentGoalInputs.clear();
+
+			// If next task is an output node, update currentGoal inputs using ancestors
+			TaskNode node = conditionNode.specificChild;
+
+			if (!(node instanceof ConditionNode)) {
+				for (String ancestor : allowedAncestors) {
+					Node candidate = null;
+					for (String key : newGraph.nodeMap.keySet()) {
+						if (key.startsWith(ancestor)) {
+							candidate = newGraph.nodeMap.get(key);
+							break;
+						}
+					}
+
+					addToGoalInputs(candidate, currentGoalInputs, init, node.getCorrespondingNode().getName(), false, false);
+				}
+			}
+
 			connections.clear();
 
 			// First create the if branch (i.e. specific branch)
@@ -205,10 +219,26 @@ public class GraphSpecies extends Species {
 			Set<String> elseSeparateAncestors = new HashSet<String>(allowedAncestors);
 			Set<String> elseSeenNodes = new HashSet<String>(seenNodes);
 			List<Node> elseCandidateList = new ArrayList<Node>(candidateList);
-			
-            //TODO: Replace the following with a method that resets the currentGoalInputs using the outputs
-            // of ancestor nodes in light of the new task, instead of clearing it
+
 			currentGoalInputs.clear();
+
+			// If next task is an output node, update currentGoal inputs using ancestors
+			node = conditionNode.generalChild;
+
+			if (!(node instanceof ConditionNode)) {
+				for (String ancestor : allowedAncestors) {
+					Node candidate = null;
+					for (String key : newGraph.nodeMap.keySet()) {
+						if (key.startsWith(ancestor)) {
+							candidate = newGraph.nodeMap.get(key);
+							break;
+						}
+					}
+
+					addToGoalInputs(candidate, currentGoalInputs, init, node.getCorrespondingNode().getName(), false, false);
+				}
+			}
+
 			connections.clear();
 
 			if (mergedGraph != null)
@@ -306,19 +336,22 @@ public class GraphSpecies extends Species {
 					Set<String> generalConds = new HashSet<String>();
 					Set<String> specificConds = new HashSet<String>();
 
-					for (String o : candidate.getOutputPossibilities().get(0)) {
-						TaxonomyNode taxNode = init.taxonomyMap.get(o);
-						Set<String> inputs = taxNode.condNodeGeneralInputs.get(node.getName());
-						if (inputs != null)
-							generalConds.addAll(inputs);
-					}
+					addToGoalInputs(candidate, generalConds, init, node.getName(), true, false);
+					addToGoalInputs(candidate, specificConds, init, node.getName(), true, true);
 
-					for (String o : candidate.getOutputPossibilities().get(1)) {
-						TaxonomyNode taxNode = init.taxonomyMap.get(o);
-						Set<String> inputs = taxNode.condNodeSpecificInputs.get(node.getName());
-						if (inputs != null)
-							specificConds.addAll(inputs);
-					}
+//					for (String o : candidate.getOutputPossibilities().get(0)) {
+//						TaxonomyNode taxNode = init.taxonomyMap.get(o);
+//						Set<String> inputs = taxNode.condNodeGeneralInputs.get(node.getName());
+//						if (inputs != null)
+//							generalConds.addAll(inputs);
+//					}
+//
+//					for (String o : candidate.getOutputPossibilities().get(1)) {
+//						TaxonomyNode taxNode = init.taxonomyMap.get(o);
+//						Set<String> inputs = taxNode.condNodeSpecificInputs.get(node.getName());
+//						if (inputs != null)
+//							specificConds.addAll(inputs);
+//					}
 
 					return new Pair<Boolean, Node>(generalConds.contains(node.getGeneralCondition()) && specificConds.contains(node.getSpecificCondition()), candidate);
 				}
@@ -328,18 +361,52 @@ public class GraphSpecies extends Species {
 			}
 			// Check if goal reached in case of output node
 			else {
-				for (String o : candidate.getOutputPossibilities().get(0)) {
-					TaxonomyNode taxNode = init.taxonomyMap.get(o);
-					Set<String> outputs = taxNode.endNodeInputs.get(taskNode.getCorrespondingNode().getName());
-					if (outputs != null)
-						currentGoalInputs.addAll(outputs);
-				}
+				addToGoalInputs(candidate, currentGoalInputs, init, taskNode.getCorrespondingNode().getName(), false, false);
+
+//				for (String o : candidate.getOutputPossibilities().get(0)) {
+//					TaxonomyNode taxNode = init.taxonomyMap.get(o);
+//					Set<String> outputs = taxNode.endNodeInputs.get(taskNode.getCorrespondingNode().getName());
+//					if (outputs != null)
+//						currentGoalInputs.addAll(outputs);
+//				}
 
 				return new Pair<Boolean, Node>(currentGoalInputs.containsAll(taskNode.getCorrespondingNode().getInputs()), null);
 			}
 		}
 
 		return new Pair<Boolean, Node>(false, null);
+	}
+
+	public void addToGoalInputs(Node candidate, Set<String> goalInputs, GraphInitializer init, String taskName, boolean isConditionalGoal, boolean isIfBranch) { //XXX
+		if (candidate == null)
+			return;
+
+		if (isConditionalGoal) {
+			if (isIfBranch) {
+				for (String o : candidate.getOutputPossibilities().get(1)) {
+					TaxonomyNode taxNode = init.taxonomyMap.get(o);
+					Set<String> inputs = taxNode.condNodeSpecificInputs.get(taskName);
+					if (inputs != null)
+						goalInputs.addAll(inputs);
+				}
+			}
+			else {
+				for (String o : candidate.getOutputPossibilities().get(0)) {
+					TaxonomyNode taxNode = init.taxonomyMap.get(o);
+					Set<String> inputs = taxNode.condNodeGeneralInputs.get(taskName);
+					if (inputs != null)
+						goalInputs.addAll(inputs);
+				}
+			}
+		}
+		else {
+			for (String o : candidate.getOutputPossibilities().get(0)) {
+				TaxonomyNode taxNode = init.taxonomyMap.get(o);
+				Set<String> outputs = taxNode.endNodeInputs.get(taskName);
+				if (outputs != null)
+					goalInputs.addAll(outputs);
+			}
+		}
 	}
 
 	public void addToCandidateList(Node n, Set<String> seenNode, Set<Node> relevant, List<Node> candidateList, GraphInitializer init, boolean isCond, boolean isIfBranch) {

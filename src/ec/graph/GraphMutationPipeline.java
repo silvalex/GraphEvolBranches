@@ -123,11 +123,9 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
                 // Create data structures
                 Set<Node> relevant = init.relevant;
-                
-                //TODO: Replace the following with a method that resets the currentGoalInputs using the outputs
-                // of ancestor nodes in light of the new task, instead of clearing it
+
                 Set<String> currentGoalInputs = new HashSet<String>();
-                
+
                 Set<String> seenNodes = new HashSet<String>();
                 List<Node> candidateList = new ArrayList<Node>();
                 Set<String> allowedAncestors = new HashSet<String>();
@@ -151,6 +149,7 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
                 	if (seenSuffix.contains(nameTag)) {
                 		seenNodes.add(node.getBaseName());
+                		allowedAncestors.add(node.getName());
                 	}
                 }
 
@@ -166,13 +165,6 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
                 	if (!node.getName().startsWith( "end" )) {
 
-                		// Update goal inputs
-                		if (!node.getName().startsWith(taskNode.getCorrespondingNode().getName()) &&
-                			 node.getName().endsWith(taskNode.getCorrespondingNode().getName())){
-                			addToCurrentGoalInputs(currentGoalInputs, taskNode, node, init);
-                		}
-
-                		allowedAncestors.add(node.getName());
                 		boolean isCond = false;
                 		boolean isIfBranch = false;
                 		if (node.getName().startsWith("cond")) {
@@ -188,7 +180,23 @@ public class GraphMutationPipeline extends BreedingPipeline {
                 Collections.shuffle(candidateList, init.random);
                 Map<String,Edge> connections = new HashMap<String,Edge>();
 
+    			if (!(taskNode instanceof ConditionNode)) {
+
+    				for (String key : graph.nodeMap.keySet()) { // XXX This code is not adding things to goal input correctly
+
+    					Node candidate = null;
+
+    					if (!key.startsWith("end") && allowedAncestors.contains(key)) {
+    						candidate = graph.nodeMap.get(key);
+    					}
+
+    					if (candidate != null)
+    						species.addToGoalInputs(candidate, currentGoalInputs, init, taskNode.getCorrespondingNode().getName(), false, false);
+    				}
+    			}
+
                 // Continue constructing graph
+    			Set<String> originalGoalInputs = new HashSet<String>(currentGoalInputs);
                 species.finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, graph, null, seenNodes, relevant, allowedAncestors, true);
             }
             graph.evaluated=false;
@@ -233,35 +241,35 @@ public class GraphMutationPipeline extends BreedingPipeline {
 			return false;
 	}
 
-	private void addToCurrentGoalInputs(Set<String> currentGoalInputs, TaskNode taskNode, Node node, GraphInitializer init) {
-		boolean isConditionalTask = taskNode instanceof ConditionNode;
-
-		if (isConditionalTask && node.getOutputPossibilities().size() > 1) {
-			Node condNode = taskNode.getCorrespondingNode();
-			Set<String> generalConds = new HashSet<String>();
-			Set<String> specificConds = new HashSet<String>();
-
-			for (String o : node.getOutputPossibilities().get(0)) {
-				TaxonomyNode taxNode = init.taxonomyMap.get(o);
-				Set<String> inputs = taxNode.condNodeGeneralInputs.get(condNode.getName());
-				if (inputs != null)
-					generalConds.addAll(inputs);
-			}
-
-			for (String o : node.getOutputPossibilities().get(1)) {
-				TaxonomyNode taxNode = init.taxonomyMap.get(o);
-				Set<String> inputs = taxNode.condNodeSpecificInputs.get(condNode.getName());
-				if (inputs != null)
-					specificConds.addAll(inputs);
-			}
-		}
-		else {
-			for (String o : node.getOutputPossibilities().get(0)) {
-				TaxonomyNode taxNode = init.taxonomyMap.get(o);
-				Set<String> outputs = taxNode.endNodeInputs.get(taskNode.getCorrespondingNode().getName());
-				if (outputs != null)
-					currentGoalInputs.addAll(outputs);
-			}
-		}
-	}
+//	private void addToCurrentGoalInputs(Set<String> currentGoalInputs, TaskNode taskNode, Node node, GraphInitializer init) {
+//		boolean isConditionalTask = taskNode instanceof ConditionNode;
+//
+//		if (isConditionalTask && node.getOutputPossibilities().size() > 1) {
+//			Node condNode = taskNode.getCorrespondingNode();
+//			Set<String> generalConds = new HashSet<String>();
+//			Set<String> specificConds = new HashSet<String>();
+//
+//			for (String o : node.getOutputPossibilities().get(0)) {
+//				TaxonomyNode taxNode = init.taxonomyMap.get(o);
+//				Set<String> inputs = taxNode.condNodeGeneralInputs.get(condNode.getName());
+//				if (inputs != null)
+//					generalConds.addAll(inputs);
+//			}
+//
+//			for (String o : node.getOutputPossibilities().get(1)) {
+//				TaxonomyNode taxNode = init.taxonomyMap.get(o);
+//				Set<String> inputs = taxNode.condNodeSpecificInputs.get(condNode.getName());
+//				if (inputs != null)
+//					specificConds.addAll(inputs);
+//			}
+//		}
+//		else {
+//			for (String o : node.getOutputPossibilities().get(0)) {
+//				TaxonomyNode taxNode = init.taxonomyMap.get(o);
+//				Set<String> outputs = taxNode.endNodeInputs.get(taskNode.getCorrespondingNode().getName());
+//				if (outputs != null)
+//					currentGoalInputs.addAll(outputs);
+//			}
+//		}
+//	}
 }
