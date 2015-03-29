@@ -25,6 +25,8 @@ public class GraphSpecies extends Species {
 	@Override
 	public Individual newIndividual(EvolutionState state, int thread) {
 		GraphIndividual ind = createNewBranchedGraph(null, state, ((GraphInitializer)state.initializer).taskTree);
+		structureValidator(ind);
+		structureValidator2(ind);
 		return ind;
 	}
 

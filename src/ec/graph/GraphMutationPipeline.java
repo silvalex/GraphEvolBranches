@@ -60,22 +60,29 @@ public class GraphMutationPipeline extends BreedingPipeline {
             while (selected == null) {
                 Node temp = (Node) nodes[init.random.nextInt( nodes.length )];
                 if (!temp.getName().startsWith( "end" ) && !temp.getName().startsWith("cond")) {
-                    selected = temp;
+                    if (temp.getName().equals( "start" ))
+                        selected = temp;
+                    else {
+                        String goalName = temp.getName().split( "-" )[1];
+                        Node goal = graph.nodeMap.get( goalName );
+                        if (hasPath(temp, goal, graph)) // XXX
+                            selected = temp;
+                    }
                 }
             }
 
-            int count = 0;
-            for (Node temp : graph.nodeMap.values()) {
-            	if (temp.getName().startsWith("serv001"))
-            		count++;
-            }
+//            int count = 0;
+//            for (Node temp : graph.nodeMap.values()) {
+//            	if (temp.getName().startsWith("serv001"))
+//            		count++;
+//            }
 
             if (selected.getName().equals( "start" )) {
                 // Create an entirely new graph
                 graph = species.createNewBranchedGraph( null, state, init.taskTree );
             }
             else {
-
+                
                 // Find all nodes that should be removed
                 Set<Node> nodesToRemove = findNodesToRemove(selected);
                 Set<Edge> edgesToRemove = new HashSet<Edge>();
@@ -182,7 +189,7 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
     			if (!(taskNode instanceof ConditionNode)) {
 
-    				for (String key : graph.nodeMap.keySet()) { // XXX This code is not adding things to goal input correctly
+    				for (String key : graph.nodeMap.keySet()) {
 
     					Node candidate = null;
 
@@ -199,6 +206,9 @@ public class GraphMutationPipeline extends BreedingPipeline {
     			Set<String> originalGoalInputs = new HashSet<String>(currentGoalInputs);
                 species.finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, graph, null, seenNodes, relevant, allowedAncestors, true);
             }
+            System.out.println("Mutation: ");
+            species.structureValidator( graph );
+            species.structureValidator2( graph );
             graph.evaluated=false;
         }
         return n;
@@ -239,6 +249,27 @@ public class GraphMutationPipeline extends BreedingPipeline {
 		}
 		else
 			return false;
+	}
+	
+	private boolean hasPath(Node from, Node to, GraphIndividual graph) {
+	    Queue<Node> queue = new LinkedList<Node>();
+	    queue.offer( from );
+	    
+	    while (!queue.isEmpty()) {
+	        Node current = queue.poll();
+	        if (current == to)
+	            return true;
+	        else {
+	            List<Edge> edges = current.getOutgoingEdgeList();
+	            if (edges != null) {
+    	            for (Edge edge : edges) {
+    	                queue.offer( edge.getToNode() );
+    	            }
+	            }
+	        }
+	    }
+	    
+	    return false;
 	}
 
 //	private void addToCurrentGoalInputs(Set<String> currentGoalInputs, TaskNode taskNode, Node node, GraphInitializer init) {
