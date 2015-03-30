@@ -25,8 +25,6 @@ public class GraphSpecies extends Species {
 	@Override
 	public Individual newIndividual(EvolutionState state, int thread) {
 		GraphIndividual ind = createNewBranchedGraph(null, state, ((GraphInitializer)state.initializer).taskTree);
-		structureValidator(ind);
-		structureValidator2(ind);
 		return ind;
 	}
 
@@ -136,9 +134,6 @@ public class GraphSpecies extends Species {
 						taskNode, "-"
 								+ taskNode.getCorrespondingNode().getName());
 				goalReached = goalCheckPair.a;
-				if (goalReached) {
-				    int i = 0;
-				}
 
 				allowedAncestors.add(candidate.getName());
 				if (mergedGraph != null)
@@ -179,8 +174,6 @@ public class GraphSpecies extends Species {
 			Set<String> ifSeenNodes = new HashSet<String>(seenNodes);
 			List<Node> ifCandidateList = new ArrayList<Node>(candidateList);
 
-			//TODO: Replace the following with a method that resets the currentGoalInputs using the outputs
-			// of ancestor nodes in light of the new task, instead of clearing it
 			currentGoalInputs.clear();
 
 			// If next task is an output node, update currentGoal inputs using ancestors
@@ -365,13 +358,6 @@ public class GraphSpecies extends Species {
 			else {
 				addToGoalInputs(candidate, currentGoalInputs, init, taskNode.getCorrespondingNode().getName(), false, false);
 
-//				for (String o : candidate.getOutputPossibilities().get(0)) {
-//					TaxonomyNode taxNode = init.taxonomyMap.get(o);
-//					Set<String> outputs = taxNode.endNodeInputs.get(taskNode.getCorrespondingNode().getName());
-//					if (outputs != null)
-//						currentGoalInputs.addAll(outputs);
-//				}
-
 				return new Pair<Boolean, Node>(currentGoalInputs.containsAll(taskNode.getCorrespondingNode().getInputs()), null);
 			}
 		}
@@ -379,7 +365,7 @@ public class GraphSpecies extends Species {
 		return new Pair<Boolean, Node>(false, null);
 	}
 
-	public void addToGoalInputs(Node candidate, Set<String> goalInputs, GraphInitializer init, String taskName, boolean isConditionalGoal, boolean isIfBranch) { //XXX
+	public void addToGoalInputs(Node candidate, Set<String> goalInputs, GraphInitializer init, String taskName, boolean isConditionalGoal, boolean isIfBranch) {
 		if (candidate == null)
 			return;
 

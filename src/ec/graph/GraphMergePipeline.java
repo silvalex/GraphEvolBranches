@@ -58,19 +58,10 @@ public class GraphMergePipeline extends BreedingPipeline {
         for(int q=start,x=0; q < nMin + start; q++,x++) {
         		GraphIndividual g1 = ((GraphIndividual)inds1[x]);
         		GraphIndividual g2 = ((GraphIndividual)inds2[x]);
-        		
-        		if (!init.overlapEnabled || enoughOverlap(g1, g2, init.overlapPercentage)) {
-        		    GraphIndividual newG = mergeGraphs(g1, g2, init);
-        		    GraphSpecies species = (GraphSpecies) newG.species;
-        		    inds[q] = species.createNewGraph(newG, state);
-        		}
-        		else {
-        		    if (g1.fitness.fitness() > g2.fitness.fitness())
-        		        inds[q] = g1;
-        		    else
-        		        inds[q] = g2;
-        		}
-        		
+
+    		    GraphIndividual newG = mergeGraphs(g1, g2, init);
+    		    GraphSpecies species = (GraphSpecies) newG.species;
+    		    inds[q] = species.createNewBranchedGraph(newG, state, init.taskTree);
 	        	inds[q].evaluated=false;
         }
         return n1;
@@ -104,19 +95,6 @@ public class GraphMergePipeline extends BreedingPipeline {
 			fromNode.getOutgoingEdgeList().add(newE);
 			toNode.getIncomingEdgeList().add(newE);
 		}
-		init.removeDanglingNodes(newG);
 		return newG;
-	}
-	
-	private boolean enoughOverlap(GraphIndividual i1, GraphIndividual i2, double overlapPercentage) {
-	    Set<String> overlap1 = new HashSet<String>();
-	    overlap1.addAll( i1.nodeMap.keySet() );
-	    overlap1.retainAll(i2.nodeMap.keySet());
-	    Set<String> overlap2 = new HashSet<String>();
-	    overlap2.addAll( i2.nodeMap.keySet() );
-	    overlap2.retainAll(i1.nodeMap.keySet());
-	    
-	    return ((double) overlap1.size())/i1.nodeMap.size() >= overlapPercentage &&
-	           ((double) overlap2.size())/i2.nodeMap.size() >= overlapPercentage;
 	}
 }

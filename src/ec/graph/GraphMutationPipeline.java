@@ -65,26 +65,81 @@ public class GraphMutationPipeline extends BreedingPipeline {
                     else {
                         String goalName = temp.getName().split( "-" )[1];
                         Node goal = graph.nodeMap.get( goalName );
-                        if (hasPath(temp, goal, graph)) // XXX
+                        if (hasPath(temp, goal, graph))
                             selected = temp;
                     }
                 }
             }
-
-//            int count = 0;
-//            for (Node temp : graph.nodeMap.values()) {
-//            	if (temp.getName().startsWith("serv001"))
-//            		count++;
-//            }
 
             if (selected.getName().equals( "start" )) {
                 // Create an entirely new graph
                 graph = species.createNewBranchedGraph( null, state, init.taskTree );
             }
             else {
-                
-                // Find all nodes that should be removed
+
+            	String selectedName = selected.getName();
+                TaskNode taskNode = null;
+
+                // If the selected node is a service
+                if (selectedName.contains("-")) {
+                	String[] tokens = selectedName.split("-");
+                	String name = tokens[tokens.length - 1];
+
+                	if (name.startsWith("end")) {
+                		taskNode = retrieveTaskNode(init.endNodes, name);
+                	}
+                	else {
+                		taskNode = retrieveTaskNode(init.condNodes, name);
+                	}
+                }
+                // Else, if the selected node is a condition
+                else {
+                	taskNode = retrieveTaskNode(init.condNodes, selectedName);
+                }
+
+                // Find all nodes that should be removed based on edge connections
                 Set<Node> nodesToRemove = findNodesToRemove(selected);
+
+                // Now mark obliteration of nodes that are satisfying goals after current goal
+                Set<String> suffixesToDelete = new HashSet<String>();
+
+                Queue<TaskNode> deleteQueue = new LinkedList<TaskNode>();
+
+                if (taskNode.getChildren() != null) {
+	                for (TaskNode tn : taskNode.getChildren())
+	                	deleteQueue.offer(tn);
+                }
+
+                while (!deleteQueue.isEmpty()) {
+                	TaskNode current = deleteQueue.poll();
+                	suffixesToDelete.add(current.getCorrespondingNode().getName());
+
+                	if (current.getChildren() != null) {
+    	                for (TaskNode tn : current.getChildren())
+    	                	deleteQueue.offer(tn);
+                    }
+                }
+
+                if (!suffixesToDelete.isEmpty()) {
+                	for (String nodeName : graph.nodeMap.keySet()){
+                		String[] tokens = nodeName.split("-");
+                		String suffix = null;
+
+                		if (tokens.length > 1) {
+                			suffix = tokens[tokens.length-1];
+                		}
+                		else {
+                			suffix = tokens[0];
+                		}
+
+                		if (suffixesToDelete.contains(suffix)) {
+                			nodesToRemove.add(graph.nodeMap.get(nodeName));
+                		}
+                	}
+                }
+
+
+
                 Set<Edge> edgesToRemove = new HashSet<Edge>();
 
                 // Remove nodes and edges
@@ -106,27 +161,6 @@ public class GraphMutationPipeline extends BreedingPipeline {
                     graph.edgeList.remove( edge );
                     graph.considerableEdgeList.remove( edge );
                 }
-
-                String selectedName = selected.getName();
-                TaskNode taskNode = null;
-
-                // If the selected node is a service
-                if (selectedName.contains("-")) {
-                	String[] tokens = selectedName.split("-");
-                	String name = tokens[tokens.length - 1];
-
-                	if (name.startsWith("end")) {
-                		taskNode = retrieveTaskNode(init.endNodes, name);
-                	}
-                	else {
-                		taskNode = retrieveTaskNode(init.condNodes, name);
-                	}
-                }
-                // Else, if the selected node is a condition
-                else {
-                	taskNode = retrieveTaskNode(init.condNodes, selectedName);
-                }
-
 
                 // Create data structures
                 Set<Node> relevant = init.relevant;
@@ -206,9 +240,6 @@ public class GraphMutationPipeline extends BreedingPipeline {
     			Set<String> originalGoalInputs = new HashSet<String>(currentGoalInputs);
                 species.finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, graph, null, seenNodes, relevant, allowedAncestors, true);
             }
-            System.out.println("Mutation: ");
-            species.structureValidator( graph );
-            species.structureValidator2( graph );
             graph.evaluated=false;
         }
         return n;
@@ -250,11 +281,11 @@ public class GraphMutationPipeline extends BreedingPipeline {
 		else
 			return false;
 	}
-	
+
 	private boolean hasPath(Node from, Node to, GraphIndividual graph) {
 	    Queue<Node> queue = new LinkedList<Node>();
 	    queue.offer( from );
-	    
+
 	    while (!queue.isEmpty()) {
 	        Node current = queue.poll();
 	        if (current == to)
@@ -268,7 +299,7 @@ public class GraphMutationPipeline extends BreedingPipeline {
 	            }
 	        }
 	    }
-	    
+
 	    return false;
 	}
 
