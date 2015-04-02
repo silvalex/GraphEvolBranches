@@ -24,11 +24,11 @@ public class GraphSpecies extends Species {
 
 	@Override
 	public Individual newIndividual(EvolutionState state, int thread) {
-		GraphIndividual ind = createNewBranchedGraph(null, state, ((GraphInitializer)state.initializer).taskTree);
+		GraphIndividual ind = createNewBranchedGraph(null, state, ((GraphInitializer)state.initializer).taskTree, null);
 		return ind;
 	}
 
-	public GraphIndividual createNewBranchedGraph(GraphIndividual mergedGraph, EvolutionState state, TaskNode taskNode) {
+	public GraphIndividual createNewBranchedGraph(GraphIndividual mergedGraph, EvolutionState state, TaskNode taskNode, Map<String, List<Node>> baseToNodesMap) {
 		// The first goal node is the child of the input node
 		taskNode = taskNode.getChildren().get(0);
 
@@ -48,7 +48,7 @@ public class GraphSpecies extends Species {
 		List<Node> candidateList = new ArrayList<Node>();
 
 		if (mergedGraph != null)
-			addToCandidateListFromEdges(start, mergedGraph, seenNodes, candidateList);
+			addToCandidateListFromEdges(start, mergedGraph, seenNodes, candidateList, init, baseToNodesMap);
 		else
 			addToCandidateList(start, seenNodes, relevant, candidateList, init, false, false);
 
@@ -57,7 +57,7 @@ public class GraphSpecies extends Species {
 		Set<String> allowedAncestors = new HashSet<String>();
 		allowedAncestors.add(start.getName());
 
-		finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, newGraph, mergedGraph, seenNodes, relevant, allowedAncestors, true);
+		finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, newGraph, mergedGraph, seenNodes, relevant, allowedAncestors, true, baseToNodesMap);
 
 		return newGraph;
 
@@ -68,9 +68,10 @@ public class GraphSpecies extends Species {
 			Set<String> currentGoalInputs, GraphInitializer init,
 			GraphIndividual newGraph, GraphIndividual mergedGraph,
 			Set<String> seenNodes, Set<Node> relevant,
-			Set<String> allowedAncestors, boolean removeDangling) {
+			Set<String> allowedAncestors, boolean removeDangling, Map<String, List<Node>> baseToNodesMap) {
 
 		boolean goalReached = false;
+
 		Pair<Boolean, Node> goalCheckPair = null;
 
 		while (!goalReached) {
@@ -131,22 +132,28 @@ public class GraphSpecies extends Species {
 				// the candidate list
 				goalCheckPair = connectCandidateToGraphByInputs(candidate,
 						connections, newGraph, init, currentGoalInputs,
-						taskNode, "-"
+						taskNode, "_"
 								+ taskNode.getCorrespondingNode().getName());
 				goalReached = goalCheckPair.a;
 
 				allowedAncestors.add(candidate.getName());
 				if (mergedGraph != null)
 					addToCandidateListFromEdges(candidate, mergedGraph,
-							seenNodes, candidateList);
+							seenNodes, candidateList, init, baseToNodesMap);
 				else
 					addToCandidateList(candidate, seenNodes, relevant,
 							candidateList, init, false, false);
 
 				break;
 			}
-			candidateList.remove(index);
-			Collections.shuffle(candidateList, init.random);
+
+			if (index != candidateList.size()) {
+				candidateList.remove(index);
+				Collections.shuffle(candidateList, init.random);
+			}
+			else {
+				break;
+			}
 		}
 
 		// Connect end node to graph
@@ -154,6 +161,32 @@ public class GraphSpecies extends Species {
 		connections.clear();
 
 		if (taskNode instanceof ConditionNode) {
+			if (goalCheckPair == null || goalCheckPair.b == null || goalCheckPair.b.getProbabilities().size() == 1) {
+
+				Node node = taskNode.getCorrespondingNode();
+
+				for (String ancestor : allowedAncestors) {
+					Node candidate = newGraph.nodeMap.get(ancestor);
+
+					if (candidate.getOutputPossibilities().size() > 1) {
+						Set<String> generalConds = new HashSet<String>();
+						Set<String> specificConds = new HashSet<String>();
+
+						addToGoalInputs(candidate, generalConds, init, node.getName(), true, false);
+						addToGoalInputs(candidate, specificConds, init, node.getName(), true, true);
+
+						if (generalConds.contains(node.getGeneralCondition()) && specificConds.contains(node.getSpecificCondition())) {
+							goalCheckPair = new Pair<Boolean, Node>(true, candidate);
+							break;
+						}
+					}
+				}
+			}
+
+			if (goalCheckPair == null || goalCheckPair.b == null || goalCheckPair.b.getProbabilities().size() == 1) { // XXX
+				System.out.println("What the heck!");
+			}
+
 			// Set probabilities
 			goal.setProbabilities(goalCheckPair.b.getProbabilities());
 
@@ -198,7 +231,7 @@ public class GraphSpecies extends Species {
 			// First create the if branch (i.e. specific branch)
 			if (mergedGraph != null)
 				addToCandidateListFromEdges(goal, mergedGraph, ifSeenNodes,
-						ifCandidateList);
+						ifCandidateList, init, baseToNodesMap);
 			else
 				addToCandidateList(goal, ifSeenNodes, relevant, ifCandidateList,
 						init, true, true);
@@ -207,7 +240,7 @@ public class GraphSpecies extends Species {
 			finishConstructingBranchedGraph(conditionNode.specificChild,
 					ifCandidateList, connections, currentGoalInputs, init,
 					newGraph, mergedGraph, ifSeenNodes, relevant,
-					ifSeparateAncestors, false);
+					ifSeparateAncestors, false, baseToNodesMap);
 
 			// Now create the else branch (i.e. general branch)
 			allowedAncestors.add(goal.getName());
@@ -238,7 +271,7 @@ public class GraphSpecies extends Species {
 
 			if (mergedGraph != null)
 				addToCandidateListFromEdges(goal, mergedGraph, elseSeenNodes,
-				elseCandidateList);
+				elseCandidateList, init, baseToNodesMap);
 			else
 				addToCandidateList(goal, elseSeenNodes, relevant, elseCandidateList,
 						init, true, false);
@@ -247,7 +280,7 @@ public class GraphSpecies extends Species {
 			finishConstructingBranchedGraph(conditionNode.generalChild,
 			elseCandidateList, connections, currentGoalInputs, init,
 					newGraph, mergedGraph, elseSeenNodes, relevant,
-					elseSeparateAncestors, false);
+					elseSeparateAncestors, false, baseToNodesMap);
 
 		} else {
 			Set<Node> nodeSet = new HashSet<Node>(newGraph.nodeMap.values());
@@ -269,7 +302,6 @@ public class GraphSpecies extends Species {
 										currentGoalInputs.remove(i);
 									}
 								}
-
 							}
 						}
 
@@ -291,23 +323,8 @@ public class GraphSpecies extends Species {
 		}
 	}
 
-	private void addToCandidateListFromEdges (Node n, GraphIndividual mergedGraph, Set<String> seenNode, List<Node> candidateList) {
-		seenNode.add(n.getBaseName());
-
-		Node original = mergedGraph.nodeMap.get(n.getName());
-
-		for (Edge e : original.getOutgoingEdgeList()) {
-			// Add servicesWithInput from taxonomy node as potential candidates to be connected
-			Node current = e.getToNode();
-			if (!seenNode.contains(current.getBaseName())) {
-				candidateList.add(current);
-				seenNode.add(current.getBaseName());
-			}
-		}
-	}
-
 	public Pair<Boolean, Node> connectCandidateToGraphByInputs(Node candidate, Map<String,Edge> connections, GraphIndividual graph, GraphInitializer init, Set<String> currentGoalInputs, TaskNode taskNode, String suffix) {
-		candidate.setName(candidate.getName() + suffix);
+		candidate.setName(candidate.getBaseName() + suffix);
 
 		graph.nodeMap.put(candidate.getName(), candidate);
 		graph.considerableNodeMap.put(candidate.getName(), candidate);
@@ -325,7 +342,7 @@ public class GraphSpecies extends Species {
 			boolean isConditionalTask = taskNode instanceof ConditionNode;
 			// Check if goal reached in case of condition
 			if (isConditionalTask) {
-				if (candidate.getOutputPossibilities().size() > 1) {
+				if (candidate.getProbabilities().size() > 1) { // XXX
 
 					Node node = taskNode.getCorrespondingNode();
 					Set<String> generalConds = new HashSet<String>();
@@ -333,20 +350,6 @@ public class GraphSpecies extends Species {
 
 					addToGoalInputs(candidate, generalConds, init, node.getName(), true, false);
 					addToGoalInputs(candidate, specificConds, init, node.getName(), true, true);
-
-//					for (String o : candidate.getOutputPossibilities().get(0)) {
-//						TaxonomyNode taxNode = init.taxonomyMap.get(o);
-//						Set<String> inputs = taxNode.condNodeGeneralInputs.get(node.getName());
-//						if (inputs != null)
-//							generalConds.addAll(inputs);
-//					}
-//
-//					for (String o : candidate.getOutputPossibilities().get(1)) {
-//						TaxonomyNode taxNode = init.taxonomyMap.get(o);
-//						Set<String> inputs = taxNode.condNodeSpecificInputs.get(node.getName());
-//						if (inputs != null)
-//							specificConds.addAll(inputs);
-//					}
 
 					return new Pair<Boolean, Node>(generalConds.contains(node.getGeneralCondition()) && specificConds.contains(node.getSpecificCondition()), candidate);
 				}
@@ -416,6 +419,22 @@ public class GraphSpecies extends Species {
 			// Add servicesWithInput from taxonomy node as potential candidates to be connected
 			for (Node current : t.servicesWithInput) {
 				if (!seenNode.contains(current.getBaseName()) && relevant.contains(current)) {
+					candidateList.add(current);
+					seenNode.add(current.getBaseName());
+				}
+			}
+		}
+	}
+
+	private void addToCandidateListFromEdges (Node n, GraphIndividual mergedGraph, Set<String> seenNode, List<Node> candidateList, GraphInitializer init, Map<String, List<Node>> baseToNodesMap) {
+		seenNode.add(n.getBaseName());
+
+		List<Node> originalNodes = baseToNodesMap.get(n.getBaseName());
+
+		for (Node original : originalNodes) {
+			for (Edge e : original.getOutgoingEdgeList()) {
+				Node current = e.getToNode();
+				if (!seenNode.contains(current.getBaseName()) && !current.getName().startsWith("cond") && !current.getName().startsWith("end")) {
 					candidateList.add(current);
 					seenNode.add(current.getBaseName());
 				}
@@ -493,5 +512,16 @@ public class GraphSpecies extends Species {
 	            }
 	        }
 	        System.out.println("-----------------------------------------------");
+	    }
+
+	    public static boolean hasConditionalNodes(GraphIndividual newG) {
+		    boolean hasCond = false;
+		    for (String s : newG.nodeMap.keySet()) {
+		    	if (s.startsWith("cond")) {
+		    		hasCond = true;
+		    		break;
+		    	}
+		    }
+		    return hasCond;
 	    }
 }

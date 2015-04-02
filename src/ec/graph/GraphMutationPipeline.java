@@ -63,7 +63,7 @@ public class GraphMutationPipeline extends BreedingPipeline {
                     if (temp.getName().equals( "start" ))
                         selected = temp;
                     else {
-                        String goalName = temp.getName().split( "-" )[1];
+                        String goalName = temp.getName().split( "_" )[1];
                         Node goal = graph.nodeMap.get( goalName );
                         if (hasPath(temp, goal, graph))
                             selected = temp;
@@ -73,7 +73,7 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
             if (selected.getName().equals( "start" )) {
                 // Create an entirely new graph
-                graph = species.createNewBranchedGraph( null, state, init.taskTree );
+                graph = species.createNewBranchedGraph( null, state, init.taskTree, null );
             }
             else {
 
@@ -81,8 +81,8 @@ public class GraphMutationPipeline extends BreedingPipeline {
                 TaskNode taskNode = null;
 
                 // If the selected node is a service
-                if (selectedName.contains("-")) {
-                	String[] tokens = selectedName.split("-");
+                if (selectedName.contains("_")) {
+                	String[] tokens = selectedName.split("_");
                 	String name = tokens[tokens.length - 1];
 
                 	if (name.startsWith("end")) {
@@ -122,7 +122,7 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
                 if (!suffixesToDelete.isEmpty()) {
                 	for (String nodeName : graph.nodeMap.keySet()){
-                		String[] tokens = nodeName.split("-");
+                		String[] tokens = nodeName.split("_");
                 		String suffix = null;
 
                 		if (tokens.length > 1) {
@@ -180,7 +180,7 @@ public class GraphMutationPipeline extends BreedingPipeline {
                 }
 
                 for (Node node : graph.nodeMap.values()) {
-                	String[] nameTokens = node.getName().split("-");
+                	String[] nameTokens = node.getName().split("_");
                 	String nameTag;
                 	if (nameTokens.length > 1) {
                 		nameTag = nameTokens[nameTokens.length - 1];
@@ -195,28 +195,55 @@ public class GraphMutationPipeline extends BreedingPipeline {
                 }
 
                 // Need to run through the tree again to add candidates to the candidate list (must be done after all all seen nodes were recorded)
-                Queue<Node> queue = new LinkedList<Node>();
+                // Not only tree, but any node with the allowed suffixes XXX
 
-                for (Edge e : selected.getIncomingEdgeList()) {
-                	queue.add(e.getFromNode());
-                }
-
-                while (!queue.isEmpty()) {
-                	Node node = queue.poll();
-
-                	if (!node.getName().startsWith( "end" )) {
-
-                		boolean isCond = false;
-                		boolean isIfBranch = false;
-                		if (node.getName().startsWith("cond")) {
-                			isCond = true;
-                			isIfBranch = determineWhetherIfBranch(node.getTaskNode(), taskNode);
-                		}
-                        species.addToCandidateList( node, seenNodes, relevant, candidateList, init, isCond, isIfBranch);
+                for (Node node : graph.nodeMap.values()) {
+                	String[] nameTokens = node.getName().split("_");
+                	String nameTag;
+                	if (nameTokens.length > 1) {
+                		nameTag = nameTokens[nameTokens.length - 1];
                 	}
-                	for (Edge e : node.getIncomingEdgeList())
-                		queue.add(e.getFromNode());
+                	else
+                		nameTag = nameTokens[0];
+
+                	if (seenSuffix.contains(nameTag)) {
+                		if (!node.getName().startsWith( "end" )) {
+
+                    		boolean isCond = false;
+                    		boolean isIfBranch = false;
+                    		if (node.getName().startsWith("cond")) {
+                    			isCond = true;
+                    			isIfBranch = determineWhetherIfBranch(node.getTaskNode(), taskNode);
+                    		}
+                            species.addToCandidateList( node, seenNodes, relevant, candidateList, init, isCond, isIfBranch);
+                    	}
+                	}
                 }
+
+
+
+//                Queue<Node> queue = new LinkedList<Node>();
+//
+//                for (Edge e : selected.getIncomingEdgeList()) {
+//                	queue.add(e.getFromNode());
+//                }
+//
+//                while (!queue.isEmpty()) {
+//                	Node node = queue.poll();
+//
+//                	if (!node.getName().startsWith( "end" )) {
+//
+//                		boolean isCond = false;
+//                		boolean isIfBranch = false;
+//                		if (node.getName().startsWith("cond")) {
+//                			isCond = true;
+//                			isIfBranch = determineWhetherIfBranch(node.getTaskNode(), taskNode);
+//                		}
+//                        species.addToCandidateList( node, seenNodes, relevant, candidateList, init, isCond, isIfBranch);
+//                	}
+//                	for (Edge e : node.getIncomingEdgeList())
+//                		queue.add(e.getFromNode());
+//                }
 
                 Collections.shuffle(candidateList, init.random);
                 Map<String,Edge> connections = new HashMap<String,Edge>();
@@ -238,7 +265,7 @@ public class GraphMutationPipeline extends BreedingPipeline {
 
                 // Continue constructing graph
     			Set<String> originalGoalInputs = new HashSet<String>(currentGoalInputs);
-                species.finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, graph, null, seenNodes, relevant, allowedAncestors, true);
+                species.finishConstructingBranchedGraph(taskNode, candidateList, connections, currentGoalInputs, init, graph, null, seenNodes, relevant, allowedAncestors, true, null);
             }
             graph.evaluated=false;
         }

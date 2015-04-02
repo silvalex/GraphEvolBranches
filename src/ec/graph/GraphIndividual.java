@@ -46,10 +46,12 @@ public class GraphIndividual extends Individual {
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();
+		builder.append("digraph g {");
 		for(Edge e: edgeList) {
 			builder.append(e);
-			builder.append(" ");
+			builder.append("; ");
 		}
+		builder.append("}");
 		return builder.toString();
 	}
 

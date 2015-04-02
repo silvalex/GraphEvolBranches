@@ -1,6 +1,10 @@
 package ec.graph;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import ec.BreedingPipeline;
@@ -60,8 +64,23 @@ public class GraphMergePipeline extends BreedingPipeline {
         		GraphIndividual g2 = ((GraphIndividual)inds2[x]);
 
     		    GraphIndividual newG = mergeGraphs(g1, g2, init);
+
+    		    Map<String, List<Node>> baseToNodesMap = new HashMap<String, List<Node>>();
+
+    		    for (Node n : newG.nodeMap.values()) {
+    		    	List<Node> nodes = baseToNodesMap.get(n.getBaseName());
+
+    		    	if (nodes == null) {
+    		    		nodes = new ArrayList<Node>();
+    		    		baseToNodesMap.put(n.getBaseName(), nodes);
+    		    	}
+
+    		    	nodes.add(n);
+    		    }
+
+
     		    GraphSpecies species = (GraphSpecies) newG.species;
-    		    inds[q] = species.createNewBranchedGraph(newG, state, init.taskTree);
+    		    inds[q] = species.createNewBranchedGraph(newG, state, init.taskTree, baseToNodesMap);
 	        	inds[q].evaluated=false;
         }
         return n1;

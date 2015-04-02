@@ -125,14 +125,14 @@ public class GraphInitializer extends SimpleInitializer {
 		taskTree.getAllConditionNodes(conditions);
 		Set<String> outputStrings = new HashSet<String>();
 
-		startNode = new Node("start", mockQos, new HashSet<String>(), outString, probabilities);
+		startNode = new Node("start", "start", mockQos, new HashSet<String>(), outString, probabilities);
 		startNode.setTaskNode(taskTree);
 		taskTree.setCorrespondingNode(startNode);
 
 		int i = 1;
 		for (OutputNode o : outputs) {
 			outputStrings.addAll(o.outputs);
-			Node endNode = new Node("end" + i, mockQos, o.outputs, null, probabilities);
+			Node endNode = new Node("end" + i, "end" + i, mockQos, o.outputs, null, probabilities);
 			suffixList.add(endNode.getName());
 			endNode.setTaskNode(o);
 			endNodes.add(endNode);
@@ -152,7 +152,7 @@ public class GraphInitializer extends SimpleInitializer {
 			List<List<String>> outputPossibilities = new ArrayList<List<String>>();
 			outputPossibilities.add(outsGeneral);
 			outputPossibilities.add(outsSpecific);
-			Node condNode = new Node("cond" + j, mockQos, c.general, c.specific, outputPossibilities, null, null);
+			Node condNode = new Node("cond" + j, "cond" + j, mockQos, c.general, c.specific, outputPossibilities, null, null);
 			suffixList.add(condNode.getName());
 			condNode.setTaskNode(c);
 			condNodes.add(condNode);
@@ -422,7 +422,7 @@ public class GraphInitializer extends SimpleInitializer {
 	public void removeDanglingNodes(GraphIndividual graph) {
 	    List<Node> dangling = new ArrayList<Node>();
 	    for (Node g : graph.nodeMap.values()) {
-	        if (!g.getName().startsWith("end") && g.getOutgoingEdgeList().isEmpty())
+	        if (!g.getName().startsWith("end") && !g.getName().startsWith("cond") && g.getOutgoingEdgeList().isEmpty())
 	            dangling.add( g );
 	    }
 
@@ -439,7 +439,8 @@ public class GraphInitializer extends SimpleInitializer {
 	        	removeAllOccurrences(e.getFromNode().getOutgoingEdgeList(), e);
 	        	removeAllOccurrences(graph.edgeList, e);
 	        	removeAllOccurrences(graph.considerableEdgeList, e);
-	            removeDangling(e.getFromNode(), graph);
+	        	if (!e.getFromNode().getName().startsWith("cond"))
+	        		removeDangling(e.getFromNode(), graph);
 	        }
 	    }
 	}
@@ -597,7 +598,7 @@ public class GraphInitializer extends SimpleInitializer {
 					outputPossibilities.add(outputs);
 				}
 
-                Node ws = new Node(name, qos, inputs, outputPossibilities, probabilities);
+                Node ws = new Node(name, name, qos, inputs, outputPossibilities, probabilities);
                 serviceMap.put(name, ws);
                 inputs = new HashSet<String>();
                 outputPossibilities = new ArrayList<List<String>>();

@@ -144,4 +144,40 @@
           </outputs>
       </outputs-possibilities>
   </service>
+    <service name="serv519685972" Res="200.06" Ava="0.67" Suc="0.77" Rel="0.67" Lat="4144.39" Pri="8.54">
+    <inputs>
+      <instance name="inst34480659"/>
+      <instance name="inst1406125886"/>
+      <instance name="inst334534758"/>
+    </inputs>
+    <outputs-possibilities>
+      <outputs prob="0.6">
+        <instance name="inst1571820935"/>
+        <instance name="inst132792159"/>
+        <instance name="inst2008894821"/>
+        <instance name="inst1653747185"/>
+      </outputs>
+      <outputs prob="0.4">
+        <instance name="inst1571820935"/>
+        <instance name="inst63359926"/>
+        <instance name="inst2008894821"/>
+        <instance name="inst1653747185"/>
+      </outputs>
+    </outputs-possibilities>
+  </service>
+    <service name="serv1905053582" Res="4508.42" Ava="0.53" Suc="0.78" Rel="0.51" Lat="4850.26" Pri="3.51">
+    <inputs>
+      <instance name="inst426906341"/>
+      <instance name="inst503506857"/>
+      <instance name="inst397823031"/>
+    </inputs>
+    <outputs-possibilities>
+      <outputs prob="1.0">
+        <instance name="inst1130445638"/>
+        <instance name="inst1965474983"/>
+        <instance name="inst1406125886"/>
+        <instance name="inst334534758"/>
+      </outputs>
+    </outputs-possibilities>
+  </service>
 </services>
