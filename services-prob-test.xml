@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<services>
+  <service name="serv001" Res="1.0" Ava="0.1" Suc="1.0" Rel="0.1" Lat="0.0" Pri="1.0">
+    <inputs>
+      <instance name="inst1926141668"/>
+      <instance name="inst395151449"/>
+      <instance name="inst1557679659"/>
+      <instance name="inst2034284318"/>
+      <instance name="inst1161158739"/>
+      <instance name="inst1525933520"/>
+      <instance name="inst1612775326"/>
+      <instance name="inst1063871562"/>
+      <instance name="inst948560629"/>
+      <instance name="inst1271554078"/>
+      <instance name="inst839803796"/>
+    </inputs>
+    <outputs-possibilities>
+      <outputs prob="0.6">
+	<instance name="inst6617000"/>
+      </outputs>
+      <outputs prob="0.4">
+	<instance name="inst629868591"/>
+      </outputs>
+    </outputs-possibilities>
+  </service>
+  <service name="serv002" Res="2.0" Ava="0.2" Suc="1.0" Rel="0.2" Lat="0.0" Pri="2.0">
+    <inputs>
+	<instance name="inst6617000"/>
+    </inputs>
+    <outputs-possibilities>
+      <outputs prob="1.0">
+	<instance name="inst2104330734"/>
+	<instance name="inst1750001286"/>
+	<instance name="inst478920248"/>
+	<instance name="inst1046461989"/>
+      </outputs>
+    </outputs-possibilities>
+  </service>
+  <service name="serv003" Res="3.0" Ava="0.3" Suc="1.0" Rel="0.3" Lat="0.0" Pri="3.0">
+    <inputs>
+	<instance name="inst629868591"/>
+    </inputs>
+    <outputs-possibilities>
+      <outputs prob="1.0">
+	<instance name="inst1820661885"/>
+	<instance name="inst1897058358"/>
+	<instance name="inst1667460853"/>
+	<instance name="inst371187776"/>
+	<instance name="inst231913132"/>
+	<instance name="inst977029756"/>
+      </outputs>
+    </outputs-possibilities>
+  </service>
+</services>

@@ -4,10 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -165,7 +163,8 @@ public class GraphInitializer extends SimpleInitializer {
 		inputStrings.addAll(((InputNode)taskTree).inputs);
 
 		relevant = getRelevantServices(serviceMap, inputStrings, outputStrings);
-		calculateNormalisationBounds(relevant);
+		//calculateNormalisationBounds(relevant);
+		calculateNormalisationBounds(serviceMap.values());
 	}
 
 	/**
@@ -487,7 +486,7 @@ public class GraphInitializer extends SimpleInitializer {
 		}
 	}
 
-	private void calculateNormalisationBounds(Set<Node> services) {
+	private void calculateNormalisationBounds(Collection<Node> services) {
 		for(Node service: services) {
 			double[] qos = service.getQos();
 
@@ -516,8 +515,8 @@ public class GraphInitializer extends SimpleInitializer {
 				minCost = cost;
 		}
 		// Adjust max. cost and max. time based on the number of services in shrunk repository
-		maxCost *= services.size();
-		maxTime *= services.size();
+//		maxCost *= services.size();
+//		maxTime *= services.size();
 
 	}
 
