@@ -120,7 +120,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 //
 //        ind2.evaluated = true;
 //	}
-	
+
     public void evaluateQoS(final GraphInitializer init, final EvolutionState state, final Individual ind, final int subpopulation, final int threadnum) {
         if (ind.evaluated) return;   //don't evaluate the individual if it's already evaluated
         if (!(ind instanceof GraphIndividual))
@@ -159,7 +159,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
             for (String name : serviceSuffixMap.get(suffix)) {
                 Node node = init.serviceMap.get(name);
                 double[] qos = node.getQos();
-                cost += normaliseCost(qos[GraphInitializer.COST], init);
+                cost += qos[GraphInitializer.COST];
                 availability *= qos[GraphInitializer.AVAILABILITY];
                 reliability *= qos[GraphInitializer.RELIABILITY];
             }
@@ -206,7 +206,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 //        t = normaliseTime(t, init);
 //        c = normaliseCost(c, init);
 
-        double fitness = init.w1 * a + init.w2 * r + init.w3 * (1.0 - t) + init.w4 * (1.0 - c);
+        double fitness = init.w1 * a + init.w2 * r + init.w3 * (10000.0 - t) + init.w4 * (10000.0 - c);
 
         ((SimpleFitness)ind2.fitness).setFitness(state,
                 // ...the fitness...
@@ -294,24 +294,24 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 //		else
 //			return (reliability - init.minReliability)/(init.maxReliability - init.minReliability);
 //	}
-
-	private double normaliseTime(double time, GraphInitializer init) {
-		//double numEnds = init.endNodes.size();
-
-		if (init.maxTime - init.minTime == 0.0)
-			return 0.0;
-		else
-			return (time - init.minTime)/(init.maxTime - init.minTime);
-	}
-
-	private double normaliseCost(double cost, GraphInitializer init) {
-		//double numEnds = init.endNodes.size();
-
-		if (init.maxCost - init.minCost == 0.0)
-			return 0.0;
-		else
-			return (cost - init.minCost)/(init.maxCost - init.minCost);
-	}
+//
+//	private double normaliseTime(double time, GraphInitializer init) {
+//		//double numEnds = init.endNodes.size();
+//
+//		if (init.maxTime - init.minTime == 0.0)
+//			return 0.0;
+//		else
+//			return (time - init.minTime)/(init.maxTime - init.minTime);
+//	}
+//
+//	private double normaliseCost(double cost, GraphInitializer init) {
+//		//double numEnds = init.endNodes.size();
+//
+//		if (init.maxCost - init.minCost == 0.0)
+//			return 0.0;
+//		else
+//			return (cost - init.minCost)/(init.maxCost - init.minCost);
+//	}
 
 	/**
 	 * Uses the Bellman-Ford algorithm with negative weights to find the longest
@@ -354,7 +354,7 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 		    String name = pre.getName();
 		    if (name.startsWith( "serv" )) {
 		        count++;
-		        totalTime += normaliseTime(pre.getQos()[GraphInitializer.TIME], init);
+		        totalTime += pre.getQos()[GraphInitializer.TIME];
 		    }
 			pre = predecessor.get(name);
 		}

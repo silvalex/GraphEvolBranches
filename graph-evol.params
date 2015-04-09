@@ -13,7 +13,7 @@ eval		 = ec.simple.SimpleEvaluator
 stat         = ec.graph.GraphStatistics
 exch		 = ec.simple.SimpleExchanger
 
-generations		        = 1000
+generations		        = 10
 quit-on-run-complete	= true
 checkpoint		        = false
 checkpoint-prefix	    = ec
@@ -50,7 +50,7 @@ select.tournament.size                         = 2
 eval.problem         = ec.graph.GraphEvol
 composition-task     = problem-prob.xml
 composition-taxonomy = taxonomy.xml
-composition-services = services-prob.xml
+composition-services = services-prob-test.xml
 #composition-task     = merged-problem.xml
 #composition-taxonomy = merged-taxonomy.xml
 #composition-services = merged-test-services-temp.xml
