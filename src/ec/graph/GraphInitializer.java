@@ -47,14 +47,14 @@ public class GraphInitializer extends SimpleInitializer {
 	public List<String> suffixList = new ArrayList<String>();
 	public GraphRandom random;
 
-	public final double minAvailability = 0.0;
-	public double maxAvailability = -1.0;
-	public final double minReliability = 0.0;
-	public double maxReliability = -1.0;
+	public final double minAvailability = 0;
+	public double maxAvailability = Double.MIN_VALUE;
+	public final double minReliability = 0;
+	public double maxReliability = Double.MIN_VALUE;
 	public double minTime = Double.MAX_VALUE;
-	public double maxTime = -1.0;
+	public double maxTime = Double.MIN_VALUE;
 	public double minCost = Double.MAX_VALUE;
-	public double maxCost = -1.0;
+	public double maxCost = Double.MIN_VALUE;
 	public double w1;
 	public double w2;
 	public double w3;
@@ -566,9 +566,25 @@ public class GraphInitializer extends SimpleInitializer {
         		String name = eElement.getAttribute("name");
         		if (!runningOwls) {
         		    qos[TIME] = Double.valueOf(eElement.getAttribute("Res"));
+    				if (qos[TIME] > maxTime)
+    					maxTime = qos[TIME];
+    				if (qos[TIME] < minTime)
+    					minTime = qos[TIME];
         		    qos[COST] = Double.valueOf(eElement.getAttribute("Pri"));
+    				if (qos[COST] > maxCost)
+    					maxCost = qos[COST];
+    				if (qos[COST] < minCost)
+    					minCost = qos[COST];
         		    qos[AVAILABILITY] = Double.valueOf(eElement.getAttribute("Ava"));
+    				if (qos[AVAILABILITY] > maxAvailability)
+    					maxAvailability = qos[AVAILABILITY];
+//    				if (qos[AVAILABILITY] < minAvailability)
+//    					minAvailability = qos[AVAILABILITY];
         		    qos[RELIABILITY] = Double.valueOf(eElement.getAttribute("Rel"));
+    				if (qos[RELIABILITY] > maxReliability)
+    					maxReliability = qos[RELIABILITY];
+//    				if (qos[RELIABILITY] < minReliability)
+//    					minReliability = qos[RELIABILITY];
         		}
 
 				// Get inputs

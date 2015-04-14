@@ -25,102 +25,6 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 	    }
 	}
 
-//    public void evaluateQoS(final GraphInitializer init, final EvolutionState state, final Individual ind, final int subpopulation, final int threadnum) {
-//		if (ind.evaluated) return;   //don't evaluate the individual if it's already evaluated
-//        if (!(ind instanceof GraphIndividual))
-//            state.output.fatal("Whoa!  It's not a GraphIndividual!!!",null);
-//        GraphIndividual ind2 = (GraphIndividual)ind;
-//
-//        double a = 0.0;
-//        double r = 0.0;
-//        double t = 0.0;
-//        double c = 0.0;
-//
-//        Set<String> serviceNames = new HashSet<String>();
-//        Map<String, Set<String>> serviceSuffixMap = new HashMap<String, Set<String>>();
-//        Map<String, Double> costBySuffixMap = new HashMap<String, Double>();
-//        Map<String, Double> availabilityBySuffixMap = new HashMap<String, Double>();
-//        Map<String, Double> reliabilityBySuffixMap = new HashMap<String, Double>();
-//
-//        for (Node n : ind2.considerableNodeMap.values()) {
-//        	if (!n.getName().equals("start") && !n.getName().startsWith("cond") && !n.getName().startsWith("end")) {
-//        		String[] tokens = n.getName().split("_");
-//        		serviceNames.add(tokens[0]);
-//
-//        		Set<String> services = serviceSuffixMap.get(tokens[tokens.length-1]);
-//        		if (services == null) {
-//        			services = new HashSet<String>();
-//        			serviceSuffixMap.put(tokens[tokens.length-1], services);
-//        		}
-//        		services.add(tokens[0]);
-//        	}
-//        }
-//
-//        for (String suffix : serviceSuffixMap.keySet()) {
-//        	double cost = 0.0;
-//        	double availability = 1.0;
-//        	double reliability = 1.0;
-//        	for (String name : serviceSuffixMap.get(suffix)) {
-//        		Node node = init.serviceMap.get(name);
-//        		double[] qos = node.getQos();
-//        		cost += qos[GraphInitializer.COST];
-//        		availability *= qos[GraphInitializer.AVAILABILITY];
-//        		reliability *= qos[GraphInitializer.RELIABILITY];
-//        	}
-//
-//        	costBySuffixMap.put(suffix, cost);
-//        	availabilityBySuffixMap.put(suffix, availability);
-//        	reliabilityBySuffixMap.put(suffix, reliability);
-//        }
-//
-//    	// If an objective of a section has already been fulfilled by earlier sections,
-//    	// just make sure these maps have "perfect" values for this section
-//
-//        Map<String, Double> timeByEndMap = new HashMap<String, Double>();
-//        Map<String, Double> probByEndMap = new HashMap<String, Double>();
-//        Map<String, Double> costByEndMap = new HashMap<String, Double>();
-//        Map<String, Double> availabilityByEndMap = new HashMap<String, Double>();
-//        Map<String, Double> reliabilityByEndMap = new HashMap<String, Double>();
-//
-//        for (Node endNode : init.endNodes) {
-//        	double time = findLongestPath(ind2, endNode.getName());
-//        	timeByEndMap.put(endNode.getName(), time);
-//        }
-//
-//        // Calculate probabilities by end
-//        calculateTreeProbs(init.taskTree.getChildren().get(0), probByEndMap, costByEndMap, availabilityByEndMap, reliabilityByEndMap,
-//        		costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, 1.0, new HashSet<String>(), ind2);
-//
-//
-//        for (Node endNode : init.endNodes) {
-//        	double prob = probByEndMap.get(endNode.getName());
-//        	double time = timeByEndMap.get(endNode.getName());
-//        	double cost = costByEndMap.get(endNode.getName());
-//        	double availability = availabilityByEndMap.get(endNode.getName());
-//        	double reliability = reliabilityByEndMap.get(endNode.getName());
-//
-//        	t += (prob * time);
-//        	c += (prob * cost);
-//        	a += (prob * availability);
-//        	r += (prob * reliability);
-//        }
-//
-//        a = normaliseAvailability(a, init);
-//        r = normaliseReliability(r, init);
-//        t = normaliseTime(t, init);
-//        c = normaliseCost(c, init);
-//
-//        double fitness = init.w1 * a + init.w2 * r + init.w3 * (1.0 - t) + init.w4 * (1.0 - c);
-//
-//        ((SimpleFitness)ind2.fitness).setFitness(state,
-//                // ...the fitness...
-//                fitness,
-//                ///... is the individual ideal?  Indicate here...
-//                false);
-//
-//        ind2.evaluated = true;
-//	}
-
     public void evaluateQoS(final GraphInitializer init, final EvolutionState state, final Individual ind, final int subpopulation, final int threadnum) {
         if (ind.evaluated) return;   //don't evaluate the individual if it's already evaluated
         if (!(ind instanceof GraphIndividual))
@@ -206,7 +110,12 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 //        t = normaliseTime(t, init);
 //        c = normaliseCost(c, init);
 
-        double fitness = init.w1 * a + init.w2 * r + init.w3 * (10000.0 - t) + init.w4 * (10000.0 - c);
+//        System.out.println("a: "+ a + ", r: " + r + ", t: " + t + ", c: " + c);
+
+        double fitness = init.w1 * normaliseAvailability(a, init) +
+        		         init.w2 * normaliseReliability(r, init) +
+        		         init.w3 * (1.0 - normaliseTime(t, init)) +
+        		         init.w4 * (1.0 - normaliseCost(c, init));
 
         ((SimpleFitness)ind2.fitness).setFitness(state,
                 // ...the fitness...
@@ -227,28 +136,26 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
     		ConditionNode condNode = (ConditionNode) taskNode;
     		// Recurse on if-child
     		calculateTreeProbs(condNode.specificChild, probByEndMap, costByEndMap, availabilityByEndMap, reliabilityByEndMap,
-    				costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, prob * graph.nodeMap.get(condNode.getCorrespondingNode().getName()).getProbabilities().get(0), newSuffixes, graph); //XXX swapped indices
+    				costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, prob * graph.nodeMap.get(condNode.getCorrespondingNode().getName()).getProbabilities().get(1), newSuffixes, graph);
     		// Recurse on else-child
     		calculateTreeProbs(condNode.generalChild, probByEndMap, costByEndMap, availabilityByEndMap, reliabilityByEndMap,
-    				costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, prob * graph.nodeMap.get(condNode.getCorrespondingNode().getName()).getProbabilities().get(1), newSuffixes, graph); //XXX swapped indices
+    				costBySuffixMap, availabilityBySuffixMap, reliabilityBySuffixMap, prob * graph.nodeMap.get(condNode.getCorrespondingNode().getName()).getProbabilities().get(0), newSuffixes, graph);
     	}
     	else {
     		probByEndMap.put(taskNode.getCorrespondingNode().getName(), prob);
     		double cost = 0.0;
     		double availability = 1.0;
     		double reliability = 1.0;
-    		double costCount = 0.0;
     		for (String suffix : newSuffixes) {
     			if (costBySuffixMap.get(suffix) != null) {
     				cost += costBySuffixMap.get(suffix);
-    				costCount++;
     			}
     			if (availabilityBySuffixMap.get(suffix) != null)
     				availability *= availabilityBySuffixMap.get(suffix);
     			if (reliabilityBySuffixMap.get(suffix) != null)
     				reliability *= reliabilityBySuffixMap.get(suffix);
     		}
-    		costByEndMap.put(taskNode.getCorrespondingNode().getName(), cost/costCount);
+    		costByEndMap.put(taskNode.getCorrespondingNode().getName(), cost);
     		availabilityByEndMap.put(taskNode.getCorrespondingNode().getName(), availability);
     		reliabilityByEndMap.put(taskNode.getCorrespondingNode().getName(), reliability);
     	}
@@ -281,37 +188,37 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 
 
 
-//	private double normaliseAvailability(double availability, GraphInitializer init) {
-//		if (init.maxAvailability - init.minAvailability == 0.0)
-//			return 1.0;
-//		else
-//			return (availability - init.minAvailability)/(init.maxAvailability - init.minAvailability);
-//	}
-//
-//	private double normaliseReliability(double reliability, GraphInitializer init) {
-//		if (init.maxReliability - init.minReliability == 0.0)
-//			return 1.0;
-//		else
-//			return (reliability - init.minReliability)/(init.maxReliability - init.minReliability);
-//	}
-//
-//	private double normaliseTime(double time, GraphInitializer init) {
-//		//double numEnds = init.endNodes.size();
-//
-//		if (init.maxTime - init.minTime == 0.0)
-//			return 0.0;
-//		else
-//			return (time - init.minTime)/(init.maxTime - init.minTime);
-//	}
-//
-//	private double normaliseCost(double cost, GraphInitializer init) {
-//		//double numEnds = init.endNodes.size();
-//
-//		if (init.maxCost - init.minCost == 0.0)
-//			return 0.0;
-//		else
-//			return (cost - init.minCost)/(init.maxCost - init.minCost);
-//	}
+	private double normaliseAvailability(double availability, GraphInitializer init) {
+		if (init.maxAvailability - init.minAvailability == 0.0)
+			return 1.0;
+		else
+			return (availability - init.minAvailability)/(init.maxAvailability - init.minAvailability);
+	}
+
+	private double normaliseReliability(double reliability, GraphInitializer init) {
+		if (init.maxReliability - init.minReliability == 0.0)
+			return 1.0;
+		else
+			return (reliability - init.minReliability)/(init.maxReliability - init.minReliability);
+	}
+
+	private double normaliseTime(double time, GraphInitializer init) {
+		//double numEnds = init.endNodes.size();
+
+		if ((init.maxTime * init.serviceMap.size()) - init.minTime == 0.0)
+			return 0.0;
+		else
+			return (time - init.minTime)/((init.maxTime * init.serviceMap.size()) - init.minTime);
+	}
+
+	private double normaliseCost(double cost, GraphInitializer init) {
+		//double numEnds = init.endNodes.size();
+
+		if ((init.maxCost * init.serviceMap.size()) - init.minCost == 0.0)
+			return 0.0;
+		else
+			return (cost - init.minCost)/((init.maxCost * init.serviceMap.size()) - init.minCost);
+	}
 
 	/**
 	 * Uses the Bellman-Ford algorithm with negative weights to find the longest
@@ -348,19 +255,16 @@ public class GraphEvol extends Problem implements SimpleProblemForm {
 		// Now retrieve total cost
 		Node pre = predecessor.get(endNodeName);
 		double totalTime = 0.0;
-		double count = 0.0;
 
 		while (pre != null) {
 		    String name = pre.getName();
 		    if (name.startsWith( "serv" )) {
-		        count++;
 		        totalTime += pre.getQos()[GraphInitializer.TIME];
 		    }
 			pre = predecessor.get(name);
 		}
 
-		double tmp = totalTime/count;
-		return tmp;
+		return totalTime;
 	}
 
 	/**
